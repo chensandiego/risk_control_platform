@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Risk Control Platform</title>
+    <style>
+        body { font-family: sans-serif; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        #url-form { margin-bottom: 20px; }
+        #events-log { border: 1px solid #ccc; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>URL Anti-Fraud Check</h1>
+        <form id="url-form">
+            <input type="text" id="url-input" placeholder="Enter URL to check" size="50">
+            <button type="submit">Check</button>
+        </form>
+        <div id="result"></div>
+
+        <hr>
+
+        <h2>Recent Traffic Events (Blocked IPs)</h2>
+        <div id="events-log">
+            <ul id="events-list"></ul>
+        </div>
+    </div>
+
+    <script>
+        const urlForm = document.getElementById('url-form');
+        const urlInput = document.getElementById('url-input');
+        const resultDiv = document.getElementById('result');
+        const eventsList = document.getElementById('events-list');
+
+        urlForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = urlInput.value;
+            const response = await fetch('/api/url/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+            const data = await response.json();
+            resultDiv.innerHTML = `<strong>URL:</strong> ${data.url}<br><strong>Risk:</strong> ${data.risk}<br><strong>Reason:</strong> ${data.reason || 'N/A'}`;
+        });
+
+        async function fetchEvents() {
+            const response = await fetch('/api/events');
+            const events = await response.json();
+            eventsList.innerHTML = '';
+            events.forEach(event => {
+                const li = document.createElement('li');
+                li.textContent = `IP: ${event.ip} blocked at ${new Date(event.timestamp).toLocaleString()}`;
+                eventsList.appendChild(li);
+            });
+        }
+
+        // Fetch events every 5 seconds
+        setInterval(fetchEvents, 5000);
+        // Initial fetch
+        fetchEvents();
+    </script>
+</body>
+</html>
