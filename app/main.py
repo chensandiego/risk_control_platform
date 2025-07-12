@@ -7,6 +7,7 @@ import redis
 from typing import Optional, List
 from datetime import datetime
 import re
+import math
 from urllib.parse import urlparse
 
 app = FastAPI()
@@ -70,7 +71,81 @@ def run_heuristic_checks(url: str, db) -> Optional[str]:
     if hostname and len(hostname.split('.')) > 4:
         return "heuristic_too_many_subdomains"
 
+    if hostname and is_dga_domain(hostname):
+        return "heuristic_dga_detected"
+
     return None
+
+def calculate_entropy(s: str) -> float:
+    """Calculate the Shannon entropy of a string."""
+    if not s:
+        return 0.0
+    
+    # Count character frequencies
+    char_counts = {}
+    for char in s:
+        char_counts[char] = char_counts.get(char, 0) + 1
+    
+    # Calculate entropy
+    entropy = 0.0
+    total_chars = len(s)
+    for count in char_counts.values():
+        probability = count / total_chars
+        entropy -= probability * math.log2(probability)
+    
+    return entropy
+
+def is_dga_domain(domain: str) -> bool:
+    """
+    Simple heuristic-based DGA detection.
+    Checks for high entropy and lack of common dictionary words.
+    """
+    # Exclude common TLDs and known legitimate patterns
+    if "." not in domain:
+        return False # Not a valid domain format for this check
+
+    parts = domain.split('.')
+    # Consider only the domain name, not TLD
+    domain_name = parts[0] 
+    
+    # Heuristic 1: Check for high entropy
+    # DGA domains often have high entropy due to random character generation
+    entropy = calculate_entropy(domain_name)
+    if entropy > 3.5:  # Threshold can be tuned
+        return True
+
+    # Heuristic 2: Check for unusual length (too short or too long)
+    if len(domain_name) < 6 or len(domain_name) > 20: # Example thresholds
+        return True
+
+    # Heuristic 3: Check for presence of too many consecutive consonants or vowels
+    # This can indicate non-pronounceable, random-like strings
+    vowels = "aeiou"
+    consonants = "bcdfghjklmnpqrstvwxyz"
+    
+    max_consecutive_vowels = 0
+    current_consecutive_vowels = 0
+    max_consecutive_consonants = 0
+    current_consecutive_consonants = 0
+
+    for char in domain_name.lower():
+        if char in vowels:
+            current_consecutive_vowels += 1
+            current_consecutive_consonants = 0
+        elif char in consonants:
+            current_consecutive_consonants += 1
+            current_consecutive_vowels = 0
+        else: # Reset for non-alphabetic characters
+            current_consecutive_vowels = 0
+            current_consecutive_consonants = 0
+        
+        max_consecutive_vowels = max(max_consecutive_vowels, current_consecutive_vowels)
+        max_consecutive_consonants = max(max_consecutive_consonants, current_consecutive_consonants)
+
+    if max_consecutive_vowels > 4 or max_consecutive_consonants > 5: # Example thresholds
+        return True
+
+    return False
 
 def extract_url_features(url: str) -> dict:
     """Extracts basic features from a URL for ML model training."""
