@@ -2,3 +2,5 @@ fastapi
 uvicorn[standard]
 pymongo
 redis
+requests
+python-dotenv

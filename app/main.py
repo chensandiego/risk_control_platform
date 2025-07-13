@@ -9,6 +9,12 @@ from datetime import datetime
 import re
 import math
 from urllib.parse import urlparse
+import requests
+import socket
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -20,6 +26,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # --- Constants ---
 RATE_LIMIT_COUNT = 10  # 10 requests
 RATE_LIMIT_WINDOW_SECONDS = 60  # per 60 seconds
+ABUSEIPDB_API_KEY = os.getenv("ABUSEIPDB_API_KEY", "YOUR_ABUSEIPDB_API_KEY")
+
 
 # --- Data Models ---
 class URLCheckRequest(BaseModel):
@@ -74,6 +82,31 @@ def run_heuristic_checks(url: str, db) -> Optional[str]:
     if hostname and is_dga_domain(hostname):
         return "heuristic_dga_detected"
 
+    return None
+
+
+def check_abuseipdb(ip: str) -> Optional[str]:
+    """Checks an IP address against the AbuseIPDB API."""
+    if not ABUSEIPDB_API_KEY or ABUSEIPDB_API_KEY == "YOUR_ABUSEIPDB_API_KEY":
+        return None  # Skip if API key is not configured
+
+    try:
+        response = requests.get(
+            "https://api.abuseipdb.com/api/v2/check",
+            params={"ipAddress": ip, "maxAgeInDays": "90"},
+            headers={"Key": ABUSEIPDB_API_KEY, "Accept": "application/json"},
+            timeout=5,
+        )
+        response.raise_for_status()
+        data = response.json().get("data", {})
+
+        if data.get("abuseConfidenceScore", 0) >= 90:
+            return f"abuseipdb_high_confidence_{data['abuseConfidenceScore']}"
+            
+    except requests.RequestException as e:
+        print(f"Error querying AbuseIPDB: {e}")
+        return None
+        
     return None
 
 def calculate_entropy(s: str) -> float:
@@ -216,13 +249,30 @@ def check_url(request: URLCheckRequest):
         risk = "high"
         reason = f"blocklisted_{found_item['category']}"
     else:
-        heuristic_reason = run_heuristic_checks(url_to_check, db)
-        if heuristic_reason:
-            risk = "medium"
-            reason = heuristic_reason
-        else:
-            risk = "low"
-            reason = "not_blocklisted"
+        # Resolve hostname to IP for AbuseIPDB check
+        try:
+            hostname = urlparse(url_to_check).hostname
+            ip_address = socket.gethostbyname(hostname)
+            abuse_reason = check_abuseipdb(ip_address)
+            if abuse_reason:
+                risk = "high"
+                reason = abuse_reason
+            else:
+                heuristic_reason = run_heuristic_checks(url_to_check, db)
+                if heuristic_reason:
+                    risk = "medium"
+                    reason = heuristic_reason
+                else:
+                    risk = "low"
+                    reason = "not_blocklisted"
+        except (socket.gaierror, TypeError):
+            heuristic_reason = run_heuristic_checks(url_to_check, db)
+            if heuristic_reason:
+                risk = "medium"
+                reason = heuristic_reason
+            else:
+                risk = "low"
+                reason = "not_blocklisted"
 
     app.redis_client.set(f"url:{url_to_check}", f"{risk}:{reason}", ex=3600)
     return URLCheckResponse(url=url_to_check, risk=risk, reason=reason)

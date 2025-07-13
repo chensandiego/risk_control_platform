@@ -4,7 +4,7 @@ This project implements a Big Data Intelligent Risk Control Platform using Pytho
 
 ## Features
 
--   **URL Anti-Fraud:** Checks URLs against a blocklist and performs heuristic analysis to identify suspicious patterns.
+-   **URL Anti-Fraud:** Checks URLs against a blocklist, performs heuristic analysis to identify suspicious patterns, and leverages the **AbuseIPDB API** to check the URL's IP address against a database of known malicious IPs.
 -   **Traffic Anti-Fraud:** Implements rate-limiting to protect API endpoints from excessive requests and logs blocked traffic.
 -   **Dynamic Keyword Management:** Suspicious keywords for heuristic analysis are stored and managed in MongoDB, allowing for real-time updates without application redeployment.
 -   **Machine Learning Foundation:** Provides an endpoint to log and label URLs with extracted features, building a dataset for future ML model training.
@@ -16,6 +16,8 @@ This project implements a Big Data Intelligent Risk Control Platform using Pytho
 -   **Database:** MongoDB
 -   **Caching/Real-time Data:** Redis
 -   **Containerization:** Docker, Docker Compose
+-   **External APIs:** AbuseIPDB
+-   **Libraries:** `requests`, `python-dotenv`
 
 ## Getting Started
 
@@ -36,7 +38,23 @@ git clone <repository-url>
 cd risk_control_platform
 ```
 
-### 2. Start the Docker Containers
+### 2. Configure AbuseIPDB API Key
+
+Create a `.env` file in the `risk_control_platform` directory:
+
+```bash
+touch .env
+```
+
+Open the `.env` file and add your AbuseIPDB API key:
+
+```
+ABUSEIPDB_API_KEY="YOUR_ABUSEIPDB_API_KEY"
+```
+
+Replace `"YOUR_ABUSEIPDB_API_KEY"` with your actual API key.
+
+### 3. Start the Docker Containers
 
 Navigate to the `risk_control_platform` directory (where `docker-compose.yml` is located) and run the following command to build the Docker images and start all services in detached mode:
 
@@ -50,7 +68,7 @@ This command will:
 -   Start the `redis` container.
 -   Start the `fastapi-app` container, connecting it to MongoDB and Redis.
 
-### 3. Verify Application Status
+### 4. Verify Application Status
 
 After running `docker compose up -d --build`, you can check the status of your containers:
 
@@ -60,7 +78,7 @@ docker compose ps
 
 You should see `Up` status for `fastapi-app`, `mongodb`, and `redis`.
 
-### 4. Access the Application
+### 5. Access the Application
 
 Once all services are running, you can access the application:
 
@@ -72,7 +90,7 @@ Once all services are running, you can access the application:
 
 ### URL Anti-Fraud
 
-Use the web dashboard to check URLs, or use `curl` to interact with the API directly.
+Use the web dashboard to check URLs, or use `curl` to interact with the API directly. The system now checks against the AbuseIPDB database in addition to the local blocklist and heuristics.
 
 **Check a URL:**
 
