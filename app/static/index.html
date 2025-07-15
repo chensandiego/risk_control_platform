@@ -1,64 +1,89 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Risk Control Platform</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Analysis Service</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; }
-        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-        #url-form { margin-bottom: 20px; }
-        #events-log { border: 1px solid #ccc; padding: 10px; }
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 700px;
+            margin-top: 50px;
+        }
+        .card {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        #results-card {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>URL Anti-Fraud Check</h1>
-        <form id="url-form">
-            <input type="text" id="url-input" placeholder="Enter URL to check" size="50">
-            <button type="submit">Check</button>
-        </form>
-        <div id="result"></div>
+        <div class="card">
+            <div class="card-body">
+                <h1 class="card-title text-center mb-4">File Analysis Service</h1>
+                <form id="upload-form">
+                    <div class="mb-3">
+                        <label for="file-input" class="form-label">Select a file to analyze</label>
+                        <input class="form-control" type="file" id="file-input" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Analyze</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
-        <hr>
-
-        <h2>Recent Traffic Events (Blocked IPs)</h2>
-        <div id="events-log">
-            <ul id="events-list"></ul>
+        <div class="card mt-4" id="results-card">
+            <div class="card-body">
+                <h2 class="card-title">Analysis Results</h2>
+                <div id="results-content"></div>
+            </div>
         </div>
     </div>
 
     <script>
-        const urlForm = document.getElementById('url-form');
-        const urlInput = document.getElementById('url-input');
-        const resultDiv = document.getElementById('result');
-        const eventsList = document.getElementById('events-list');
+        const uploadForm = document.getElementById('upload-form');
+        const fileInput = document.getElementById('file-input');
+        const resultsCard = document.getElementById('results-card');
+        const resultsContent = document.getElementById('results-content');
 
-        urlForm.addEventListener('submit', async (e) => {
+        uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const url = urlInput.value;
-            const response = await fetch('/api/url/check', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url })
-            });
-            const data = await response.json();
-            resultDiv.innerHTML = `<strong>URL:</strong> ${data.url}<br><strong>Risk:</strong> ${data.risk}<br><strong>Reason:</strong> ${data.reason || 'N/A'}`;
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/uploadfile/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                resultsContent.innerHTML = `
+                    <p><strong>Filename:</strong> ${data.filename}</p>
+                    <p><strong>Content Type:</strong> ${data.content_type}</p>
+                    <p><strong>Risk Score:</strong> <span class="badge bg-danger">${data.risk_score}</span></p>
+                    <p><strong>Findings:</strong></p>
+                    <pre class="bg-light p-2 rounded">${JSON.stringify(data.findings, null, 2)}</pre>
+                `;
+                resultsCard.style.display = 'block';
+
+            } catch (error) {
+                resultsContent.innerHTML = `<div class="alert alert-danger">Error analyzing file: ${error.message}</div>`;
+                resultsCard.style.display = 'block';
+            }
         });
-
-        async function fetchEvents() {
-            const response = await fetch('/api/events');
-            const events = await response.json();
-            eventsList.innerHTML = '';
-            events.forEach(event => {
-                const li = document.createElement('li');
-                li.textContent = `IP: ${event.ip} blocked at ${new Date(event.timestamp).toLocaleString()}`;
-                eventsList.appendChild(li);
-            });
-        }
-
-        // Fetch events every 5 seconds
-        setInterval(fetchEvents, 5000);
-        // Initial fetch
-        fetchEvents();
     </script>
 </body>
 </html>

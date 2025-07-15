@@ -4,3 +4,6 @@ pymongo
 redis
 requests
 python-dotenv
+sqlalchemy
+alembic
+python-multipart

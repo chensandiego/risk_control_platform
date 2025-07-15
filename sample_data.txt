@@ -1,0 +1,8 @@
+This is a test file for the risk control platform.
+
+Here is a sample email address: test.user@example.com
+
+And here is a number that looks like a credit card:
+4992-7398-7162-3456
+
+This file can be used to test the file upload and analysis functionality.
