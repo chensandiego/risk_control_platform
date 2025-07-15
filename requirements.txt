@@ -7,3 +7,6 @@ python-dotenv
 sqlalchemy
 alembic
 python-multipart
+torch
+transformers
+scikit-learn
