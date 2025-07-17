@@ -4,8 +4,8 @@ This project is a file analysis service built with Python (FastAPI) and SQLAlche
 
 ## Features
 
--   **File Upload and Analysis:** Upload files through a web interface and receive a risk score and detailed findings.
--   **Rule-Based Scanning:** The default analysis model scans for common sensitive data patterns (e.g., emails, credit cards) using regular expressions.
+-   **File Upload and Analysis:** Upload files through a web interface and receive a detailed risk score and comprehensive findings based on enhanced analysis patterns.
+-   **Enhanced Rule-Based Scanning:** The analysis now includes more sophisticated patterns for common sensitive data (e.g., emails, credit cards, API keys, SSNs, private keys) with weighted risk scoring.
 -   **Machine Learning Ready:** Includes a script (`train_ner_model.py`) to fine-tune a `distilbert-base-uncased` model for Named Entity Recognition (NER) to detect custom sensitive data types.
 -   **Database Integration:** Analysis results are stored in a SQLite database using SQLAlchemy, allowing for easy migration to other databases like PostgreSQL.
 -   **Modern UI:** The user interface is built with Bootstrap and uses asynchronous JavaScript for a smooth user experience.
@@ -28,6 +28,7 @@ Ensure you have the following installed on your system:
 
 -   Python 3.7+
 -   pip (Python package installer)
+-   Docker and Docker Compose (for containerized deployment)
 
 ### 1. Clone the Repository (if applicable)
 
@@ -48,6 +49,8 @@ pip install -r requirements.txt
 
 ### 3. Run the Application
 
+#### Option 1: Run Locally (Python)
+
 Start the FastAPI application using Uvicorn:
 
 ```bash
@@ -56,9 +59,19 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 This command starts the server. It will use the default rule-based analysis engine.
 
+#### Option 2: Run with Docker Compose (Recommended)
+
+For a containerized setup, use Docker Compose. This will build the Docker image and run the application in a container.
+
+```bash
+docker-compose up --build
+```
+
+This command will build the Docker image (if not already built) and start the FastAPI application. The application will be accessible on port 8000.
+
 ### 4. Access the Application
 
-Once the server is running, you can access the application in your web browser at `http://localhost:8000`.
+Once the server is running (either locally or via Docker Compose), you can access the application in your web browser at `http://localhost:8000`.
 
 ---
 
@@ -103,5 +116,7 @@ risk_control_platform/
 │       └── index.html    # Main HTML file for the UI
 ├── train_ner_model.py    # Script for training the NER model
 ├── requirements.txt      # Project dependencies
+├── docker-compose.yml    # Docker Compose configuration
+├── Dockerfile            # Dockerfile for the application
 └── README.md             # This file
 ```

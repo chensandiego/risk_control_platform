@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Analysis Service</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 700px;
+            margin-top: 50px;
+        }
+        .card {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        #results-card {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="card-title text-center mb-4">File Analysis Service</h1>
+                <form id="upload-form">
+                    <div class="mb-3">
+                        <label for="file-input" class="form-label">Select a file to analyze</label>
+                        <input class="form-control" type="file" id="file-input" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Analyze</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4" id="results-card">
+            <div class="card-body">
+                <h2 class="card-title">Analysis Results</h2>
+                <div id="results-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadForm = document.getElementById('upload-form');
+        const fileInput = document.getElementById('file-input');
+        const resultsCard = document.getElementById('results-card');
+        const resultsContent = document.getElementById('results-content');
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/uploadfile/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                resultsContent.innerHTML = `
+                    <p><strong>Filename:</strong> ${data.filename}</p>
+                    <p><strong>Content Type:</strong> ${data.content_type}</p>
+                    <p><strong>Risk Score:</strong> <span class="badge bg-danger">${data.risk_score}</span></p>
+                    <p><strong>Findings:</strong></p>
+                    <pre class="bg-light p-2 rounded">${JSON.stringify(data.findings, null, 2)}</pre>
+                `;
+                resultsCard.style.display = 'block';
+
+            } catch (error) {
+                resultsContent.innerHTML = `<div class="alert alert-danger">Error analyzing file: ${error.message}</div>`;
+                resultsCard.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

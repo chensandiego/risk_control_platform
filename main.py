@@ -31,8 +31,8 @@ async def create_upload_file(file: UploadFile = File(...), db: Session = Depends
     result = schemas.AnalysisResultCreate(
         filename=file.filename,
         content_type=file.content_type,
-        risk_score=analysis_results['overall_risk_score'],
-        findings=analysis_results['detailed_findings']
+        risk_score=analysis_results['risk_score'],
+        findings=analysis_results['findings']
     )
     return crud.create_analysis_result(db=db, result=result)
 
