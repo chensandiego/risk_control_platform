@@ -1,27 +1,31 @@
 version: '3.8'
 
 services:
-  fastapi-app:
-    build: .
-    ports:
-      - "8000:80"
-    volumes:
-      - ./app:/app
-    depends_on:
-      - mongodb
-      - redis
-
-  mongodb:
-    image: mongo:latest
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-
   redis:
-    image: redis:latest
+    image: redis:alpine
     ports:
       - "6379:6379"
 
-volumes:
-  mongo_data:
+  fastapi-app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONPATH=.
+    depends_on:
+      - redis
+
+  celery-worker:
+    build: .
+    command: celery -A celery_app worker --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONPATH=.
+    depends_on:
+      - redis
+      - fastapi-app

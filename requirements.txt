@@ -15,3 +15,6 @@ openpyxl
 pytesseract
 Pillow
 pdfminer.six
+celery[redis]
+torch
+torchvision

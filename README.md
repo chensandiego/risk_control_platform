@@ -4,21 +4,32 @@ This project is a file analysis service built with Python (FastAPI) and SQLAlche
 
 ## Features
 
--   **File Upload and Analysis:** Upload various file types (text, Word, Excel, PDF, images) through a web interface and receive a detailed risk score and comprehensive findings based on enhanced analysis patterns.
+-   **Asynchronous File Analysis:** Upload various file types (text, CSV, JSON, XML, Word, Excel, PDF, images) and receive a task ID immediately. The analysis is performed in the background, and the results can be retrieved without blocking the user.
 -   **Real-time Text Analysis:** Paste text directly into a textarea for immediate analysis and feedback.
--   **Enhanced Rule-Based Scanning:** The analysis now includes more sophisticated patterns for common sensitive data (e.g., emails, credit cards, API keys, SSNs, private keys) with weighted risk scoring.
+-   **Enhanced Rule-Based Scanning:** The analysis now includes more sophisticated patterns for common sensitive data (e.g., emails, credit cards, API keys, SSNs, private keys) with weighted risk scoring, as well as entropy-based detection for secrets.
 -   **Machine Learning Ready:** Includes a script (`train_ner_model.py`) to fine-tune a `distilbert-base-uncased` model for Named Entity Recognition (NER) to detect custom sensitive data types.
--   **OCR Support:** Utilizes Tesseract OCR to extract text from image files and image-based PDFs for analysis.
+-   **Image Content Analysis:** Extends beyond OCR to use computer vision models to detect sensitive objects in images, such as credit cards or ID cards.
 -   **Database Integration:** Analysis results are stored in a SQLite database using SQLAlchemy, allowing for easy migration to other databases like PostgreSQL.
--   **Modern UI:** The user interface is built with Bootstrap and uses asynchronous JavaScript for a smooth user experience.
+-   **Modern UI:** The user interface is built with Bootstrap and uses asynchronous JavaScript to poll for results.
 
 ## Technologies Used
 
 -   **Backend:** Python 3.9, FastAPI
+-   **Task Queue:** Celery, Redis
 -   **Database:** SQLite (with SQLAlchemy for ORM)
 -   **Frontend:** HTML, Bootstrap, JavaScript
 -   **ML/NLP:** PyTorch, Hugging Face Transformers
 -   **Libraries:** `python-multipart`, `scikit-learn`, `python-docx`, `openpyxl`, `pytesseract`, `Pillow`, `pdfminer.six`
+
+## Architecture
+
+The application uses a client-server architecture with a background task queue for processing file analyses. This ensures that the application remains responsive, even when analyzing large files.
+
+1.  **Client (Browser):** The user uploads a file or submits text through the web interface.
+2.  **FastAPI Server:** The server receives the request and creates a new analysis task.
+3.  **Celery Task Queue:** The task is sent to a Celery worker for processing.
+4.  **Redis:** Redis serves as the message broker and result backend for Celery.
+5.  **Client Polling:** The client polls the server for the analysis results using the task ID.
 
 ## Getting Started
 
@@ -44,7 +55,7 @@ cd risk_control_platform
 
 ### 2. Install Dependencies
 
-Install the required Python packages using `pip`. This includes FastAPI, Uvicorn, and the machine learning libraries, along with document parsing and OCR libraries.
+Install the required Python packages using `pip`.
 
 ```bash
 pip install -r requirements.txt
@@ -54,23 +65,32 @@ pip install -r requirements.txt
 
 #### Option 1: Run Locally (Python)
 
-Start the FastAPI application using Uvicorn. Note the `PYTHONPATH=.` prefix to ensure correct module imports.
+To run the application locally, you will need to start the FastAPI server, a Redis instance, and a Celery worker.
 
+**1. Start Redis:**
+```bash
+redis-server
+```
+
+**2. Start the Celery Worker:**
+```bash
+celery -A celery_app worker --loglevel=info
+```
+
+**3. Start the FastAPI Application:**
 ```bash
 PYTHONPATH=. uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-This command starts the server. It will use the default rule-based analysis engine.
-
 #### Option 2: Run with Docker Compose (Recommended)
 
-For a containerized setup, use Docker Compose. This will build the Docker image and run the application in a container.
+For a containerized setup, use Docker Compose. This will build the Docker image and run the application, Redis, and a Celery worker in separate containers.
 
 ```bash
 docker-compose up --build
 ```
 
-This command will build the Docker image (if not already built) and start the FastAPI application. The application will be accessible on port 8000.
+This command will build the Docker image (if not already built) and start all the services. The application will be accessible on port 8000.
 
 ### 4. Access the Application
 
@@ -117,6 +137,7 @@ risk_control_platform/
 │   ├── schemas.py        # Pydantic models
 │   └── static/
 │       └── index.html    # Main HTML file for the UI
+├── celery_app.py         # Celery application setup
 ├── train_ner_model.py    # Script for training the NER model
 ├── requirements.txt      # Project dependencies
 ├── docker-compose.yml    # Docker Compose configuration

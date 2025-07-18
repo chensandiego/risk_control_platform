@@ -6,19 +6,11 @@
     <title>File Analysis Service</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            background-color: #f8f9fa;
-        }
-        .container {
-            max-width: 700px;
-            margin-top: 50px;
-        }
-        .card {
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        #results-card {
-            display: none;
-        }
+        body { background-color: #f8f9fa; }
+        .container { max-width: 700px; margin-top: 50px; }
+        .card { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        #results-card { display: none; }
+        .spinner-border { display: none; }
     </style>
 </head>
 <body>
@@ -27,11 +19,10 @@
             <div class="card-body">
                 <h1 class="card-title text-center mb-4">File Analysis Service</h1>
                 
-                <!-- File Upload Section -->
                 <h2 class="mb-3">Upload File for Analysis</h2>
                 <form id="upload-form" class="mb-4">
                     <div class="mb-3">
-                        <label for="file-input" class="form-label">Select a file to analyze</label>
+                        <label for="file-input" class="form-label">Select a file</label>
                         <input class="form-control" type="file" id="file-input" required>
                     </div>
                     <div class="d-grid">
@@ -41,22 +32,23 @@
 
                 <hr class="my-4">
 
-                <!-- Text Area Analysis Section -->
                 <h2 class="mb-3">Analyze Text Directly</h2>
                 <div class="mb-3">
-                    <label for="text-input" class="form-label">Paste text here for real-time analysis</label>
-                    <textarea class="form-control" id="text-input" rows="8" placeholder="Enter text to analyze..."></textarea>
+                    <label for="text-input" class="form-label">Paste text here</label>
+                    <textarea class="form-control" id="text-input" rows="8"></textarea>
                 </div>
                 <div class="d-grid">
                     <button type="button" class="btn btn-success" id="analyze-text-btn">Analyze Text</button>
                 </div>
-
             </div>
         </div>
 
         <div class="card mt-4" id="results-card">
             <div class="card-body">
                 <h2 class="card-title">Analysis Results</h2>
+                <div class="spinner-border text-primary" role="status" id="loading-spinner">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
                 <div id="results-content"></div>
             </div>
         </div>
@@ -69,73 +61,68 @@
         const analyzeTextBtn = document.getElementById('analyze-text-btn');
         const resultsCard = document.getElementById('results-card');
         const resultsContent = document.getElementById('results-content');
+        const loadingSpinner = document.getElementById('loading-spinner');
 
-        // Function to display results
-        function displayResults(data) {
-            resultsContent.innerHTML = `
-                <p><strong>Filename:</strong> ${data.filename || 'N/A'}</p>
-                <p><strong>Content Type:</strong> ${data.content_type || 'text/plain'}</p>
-                <p><strong>Risk Score:</strong> <span class="badge bg-danger">${data.risk_score}</span></p>
-                <p><strong>Findings:</strong></p>
-                <pre class="bg-light p-2 rounded">${JSON.stringify(data.findings, null, 2)}</pre>
-            `;
+        function pollForResult(taskId) {
             resultsCard.style.display = 'block';
+            loadingSpinner.style.display = 'block';
+            resultsContent.innerHTML = '';
+
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/results/${taskId}`);
+                    const data = await response.json();
+
+                    if (data.status === 'SUCCESS') {
+                        clearInterval(interval);
+                        loadingSpinner.style.display = 'none';
+                        displayResults(data.result);
+                    } else if (data.status === 'FAILURE') {
+                        clearInterval(interval);
+                        loadingSpinner.style.display = 'none';
+                        resultsContent.innerHTML = `<div class="alert alert-danger">Analysis failed: ${data.error}</div>`;
+                    }
+                    // If PENDING, do nothing and wait for the next poll
+                } catch (error) {
+                    clearInterval(interval);
+                    loadingSpinner.style.display = 'none';
+                    resultsContent.innerHTML = `<div class="alert alert-danger">Error fetching results: ${error.message}</div>`;
+                }
+            }, 2000); // Poll every 2 seconds
         }
 
-        // File Upload Handler
+        function displayResults(data) {
+            const findingsHtml = data.detailed_findings ? `<pre class="bg-light p-2 rounded">${JSON.stringify(data.detailed_findings, null, 2)}</pre>` : '<p>No findings.</p>';
+            resultsContent.innerHTML = `
+                <p><strong>Overall Risk Score:</strong> <span class="badge bg-danger">${data.overall_risk_score}</span></p>
+                <p><strong>Summary:</strong></p>
+                <p>${data.summary.replace(/\n/g, '<br>')}</p>
+                <p><strong>Detailed Findings:</strong></p>
+                ${findingsHtml}
+            `;
+        }
+
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
 
-            try {
-                const response = await fetch('/uploadfile/', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                displayResults(data);
-
-            } catch (error) {
-                resultsContent.innerHTML = `<div class="alert alert-danger">Error analyzing file: ${error.message}</div>`;
-                resultsCard.style.display = 'block';
-            }
+            const response = await fetch('/uploadfile/', { method: 'POST', body: formData });
+            const data = await response.json();
+            pollForResult(data.task_id);
         });
 
-        // Text Analysis Handler
         analyzeTextBtn.addEventListener('click', async () => {
-            const textToAnalyze = textInput.value;
-            if (!textToAnalyze.trim()) {
-                alert('Please enter some text to analyze.');
-                return;
-            }
+            const text = textInput.value;
+            if (!text.trim()) return alert('Please enter text.');
 
-            try {
-                const response = await fetch('/analyze-text/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ text: textToAnalyze })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                displayResults(data);
-
-            } catch (error) {
-                resultsContent.innerHTML = `<div class="alert alert-danger">Error analyzing text: ${error.message}</div>`;
-                resultsCard.style.display = 'block';
-            }
+            const response = await fetch('/analyze-text/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            const data = await response.json();
+            pollForResult(data.task_id);
         });
     </script>
 </body>
