@@ -10,3 +10,8 @@ python-multipart
 torch
 transformers
 scikit-learn
+python-docx
+openpyxl
+pytesseract
+Pillow
+pdfminer.six

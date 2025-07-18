@@ -4,9 +4,11 @@ This project is a file analysis service built with Python (FastAPI) and SQLAlche
 
 ## Features
 
--   **File Upload and Analysis:** Upload files through a web interface and receive a detailed risk score and comprehensive findings based on enhanced analysis patterns.
+-   **File Upload and Analysis:** Upload various file types (text, Word, Excel, PDF, images) through a web interface and receive a detailed risk score and comprehensive findings based on enhanced analysis patterns.
+-   **Real-time Text Analysis:** Paste text directly into a textarea for immediate analysis and feedback.
 -   **Enhanced Rule-Based Scanning:** The analysis now includes more sophisticated patterns for common sensitive data (e.g., emails, credit cards, API keys, SSNs, private keys) with weighted risk scoring.
 -   **Machine Learning Ready:** Includes a script (`train_ner_model.py`) to fine-tune a `distilbert-base-uncased` model for Named Entity Recognition (NER) to detect custom sensitive data types.
+-   **OCR Support:** Utilizes Tesseract OCR to extract text from image files and image-based PDFs for analysis.
 -   **Database Integration:** Analysis results are stored in a SQLite database using SQLAlchemy, allowing for easy migration to other databases like PostgreSQL.
 -   **Modern UI:** The user interface is built with Bootstrap and uses asynchronous JavaScript for a smooth user experience.
 
@@ -16,7 +18,7 @@ This project is a file analysis service built with Python (FastAPI) and SQLAlche
 -   **Database:** SQLite (with SQLAlchemy for ORM)
 -   **Frontend:** HTML, Bootstrap, JavaScript
 -   **ML/NLP:** PyTorch, Hugging Face Transformers
--   **Libraries:** `python-multipart`, `scikit-learn`
+-   **Libraries:** `python-multipart`, `scikit-learn`, `python-docx`, `openpyxl`, `pytesseract`, `Pillow`, `pdfminer.six`
 
 ## Getting Started
 
@@ -29,6 +31,7 @@ Ensure you have the following installed on your system:
 -   Python 3.7+
 -   pip (Python package installer)
 -   Docker and Docker Compose (for containerized deployment)
+-   **Tesseract OCR Engine:** Required for image and PDF analysis. Install it via your system's package manager (e.g., `brew install tesseract` on macOS, `sudo apt install tesseract-ocr` on Ubuntu/Debian) or download from [Tesseract GitHub page](https://tesseract-ocr.github.io/tessdoc/Downloads.html).
 
 ### 1. Clone the Repository (if applicable)
 
@@ -41,7 +44,7 @@ cd risk_control_platform
 
 ### 2. Install Dependencies
 
-Install the required Python packages using `pip`. This includes FastAPI, Uvicorn, and the machine learning libraries.
+Install the required Python packages using `pip`. This includes FastAPI, Uvicorn, and the machine learning libraries, along with document parsing and OCR libraries.
 
 ```bash
 pip install -r requirements.txt
@@ -51,10 +54,10 @@ pip install -r requirements.txt
 
 #### Option 1: Run Locally (Python)
 
-Start the FastAPI application using Uvicorn:
+Start the FastAPI application using Uvicorn. Note the `PYTHONPATH=.` prefix to ensure correct module imports.
 
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+PYTHONPATH=. uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 This command starts the server. It will use the default rule-based analysis engine.

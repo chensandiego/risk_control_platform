@@ -13,7 +13,7 @@ SENSITIVE_PATTERNS = {
         "description": "Potential credit card numbers found."
     },
     "api_keys": {
-        "pattern": r'(?:api_key|API_KEY|token|bearer|secret)[\s=:]*['"]?([a-zA-Z0-9-_\.]{16,})['"]?',
+        "pattern": r"""(?:api_key|API_KEY|token|bearer|secret)[\s=:]*['"]?([a-zA-Z0-9-_\.]{16,})['"]?""",
         "weight": 15,
         "description": "Potential API keys or tokens found."
     },

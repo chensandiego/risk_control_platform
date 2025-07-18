@@ -23,18 +23,34 @@
 </head>
 <body>
     <div class="container">
-        <div class="card">
+        <div class="card mb-4">
             <div class="card-body">
                 <h1 class="card-title text-center mb-4">File Analysis Service</h1>
-                <form id="upload-form">
+                
+                <!-- File Upload Section -->
+                <h2 class="mb-3">Upload File for Analysis</h2>
+                <form id="upload-form" class="mb-4">
                     <div class="mb-3">
                         <label for="file-input" class="form-label">Select a file to analyze</label>
                         <input class="form-control" type="file" id="file-input" required>
                     </div>
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">Analyze</button>
+                        <button type="submit" class="btn btn-primary">Analyze File</button>
                     </div>
                 </form>
+
+                <hr class="my-4">
+
+                <!-- Text Area Analysis Section -->
+                <h2 class="mb-3">Analyze Text Directly</h2>
+                <div class="mb-3">
+                    <label for="text-input" class="form-label">Paste text here for real-time analysis</label>
+                    <textarea class="form-control" id="text-input" rows="8" placeholder="Enter text to analyze..."></textarea>
+                </div>
+                <div class="d-grid">
+                    <button type="button" class="btn btn-success" id="analyze-text-btn">Analyze Text</button>
+                </div>
+
             </div>
         </div>
 
@@ -49,9 +65,24 @@
     <script>
         const uploadForm = document.getElementById('upload-form');
         const fileInput = document.getElementById('file-input');
+        const textInput = document.getElementById('text-input');
+        const analyzeTextBtn = document.getElementById('analyze-text-btn');
         const resultsCard = document.getElementById('results-card');
         const resultsContent = document.getElementById('results-content');
 
+        // Function to display results
+        function displayResults(data) {
+            resultsContent.innerHTML = `
+                <p><strong>Filename:</strong> ${data.filename || 'N/A'}</p>
+                <p><strong>Content Type:</strong> ${data.content_type || 'text/plain'}</p>
+                <p><strong>Risk Score:</strong> <span class="badge bg-danger">${data.risk_score}</span></p>
+                <p><strong>Findings:</strong></p>
+                <pre class="bg-light p-2 rounded">${JSON.stringify(data.findings, null, 2)}</pre>
+            `;
+            resultsCard.style.display = 'block';
+        }
+
+        // File Upload Handler
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -69,18 +100,40 @@
                 }
 
                 const data = await response.json();
-
-                resultsContent.innerHTML = `
-                    <p><strong>Filename:</strong> ${data.filename}</p>
-                    <p><strong>Content Type:</strong> ${data.content_type}</p>
-                    <p><strong>Risk Score:</strong> <span class="badge bg-danger">${data.risk_score}</span></p>
-                    <p><strong>Findings:</strong></p>
-                    <pre class="bg-light p-2 rounded">${JSON.stringify(data.findings, null, 2)}</pre>
-                `;
-                resultsCard.style.display = 'block';
+                displayResults(data);
 
             } catch (error) {
                 resultsContent.innerHTML = `<div class="alert alert-danger">Error analyzing file: ${error.message}</div>`;
+                resultsCard.style.display = 'block';
+            }
+        });
+
+        // Text Analysis Handler
+        analyzeTextBtn.addEventListener('click', async () => {
+            const textToAnalyze = textInput.value;
+            if (!textToAnalyze.trim()) {
+                alert('Please enter some text to analyze.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/analyze-text/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: textToAnalyze })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayResults(data);
+
+            } catch (error) {
+                resultsContent.innerHTML = `<div class="alert alert-danger">Error analyzing text: ${error.message}</div>`;
                 resultsCard.style.display = 'block';
             }
         });
