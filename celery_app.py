@@ -1,6 +1,10 @@
 
 from celery import Celery
 import os
+import sys
+
+# Add the project root to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 
 # Default to a local Redis instance if the environment variable is not set
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

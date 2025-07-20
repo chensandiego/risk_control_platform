@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -15,9 +15,11 @@ from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
+import redis
+import os
 
-from . import crud, models, schemas
-from .database import SessionLocal, engine
+from . import crud, models, schemas, rules_crud, dashboard
+from .database import SessionLocal, engine, get_db
 from .analysis import analyze_file_task
 from celery_app import celery_app
 
@@ -27,13 +29,9 @@ app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
-# Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# Initialize Redis client
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+redis_client = redis.from_url(REDIS_URL)
 
 def extract_text_from_csv(file_content: bytes) -> str:
     decoded_content = file_content.decode('utf-8').splitlines()
@@ -56,8 +54,19 @@ def extract_text_from_xlsx(file_content: bytes) -> str:
     return "\n".join([str(cell.value) for row in workbook.active.iter_rows() for cell in row if cell.value is not None])
 
 def extract_text_from_pdf(file_content: bytes) -> str:
-    # ... (implementation remains the same)
-    return ""
+    rsrcmgr = PDFResourceManager()
+    retstr = io.StringIO()
+    laparams = LAParams()
+    device = TextConverter(rsrcmgr, retstr, laparams=laparams)
+    fp = io.BytesIO(file_content)
+    interpreter = PDFPageInterpreter(rsrcmgr, device)
+    for page in PDFPage.get_pages(fp):
+        interpreter.process_page(page)
+    text = retstr.getvalue()
+    fp.close()
+    device.close()
+    retstr.close()
+    return text
 
 def extract_text_from_image(file_content: bytes) -> str:
     image = Image.open(io.BytesIO(file_content))
@@ -87,29 +96,29 @@ async def create_upload_file(file: UploadFile = File(...)):
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {file.content_type}")
 
-    task = analyze_file_task.delay(extracted_text.encode('utf-8'), file.content_type)
+    task = analyze_file_task.delay(extracted_text.encode('utf-8'), file.content_type, file.filename)
     
     return JSONResponse({"task_id": task.id})
 
 @app.post("/analyze-text/")
 async def analyze_text_directly(text_data: schemas.TextInput):
-    task = analyze_file_task.delay(text_data.text.encode('utf-8'))
+    task = analyze_file_task.delay(text_data.text.encode('utf-8'), "text/plain", "Direct Text Input")
     return JSONResponse({"task_id": task.id})
 
 @app.get("/results/{task_id}")
-async def get_analysis_result(task_id: str, db: Session = Depends(get_db)):
+async def get_analysis_result(task_id: str):
+    # Try to fetch from cache first
+    cached_result = redis_client.get(task_id)
+    if cached_result:
+        return JSONResponse({"status": "SUCCESS", "result": json.loads(cached_result)})
+
     task_result = AsyncResult(task_id, app=celery_app)
 
     if task_result.ready():
         if task_result.successful():
             analysis_data = task_result.get()
-            result_to_save = schemas.AnalysisResultCreate(
-                filename="N/A",
-                content_type="N/A",
-                risk_score=analysis_data['overall_risk_score'],
-                findings=analysis_data['detailed_findings']
-            )
-            crud.create_analysis_result(db=db, result=result_to_save)
+            # Cache the result before returning
+            redis_client.set(task_id, json.dumps(analysis_data), ex=3600) # Cache for 1 hour
             return JSONResponse({"status": "SUCCESS", "result": analysis_data})
         else:
             return JSONResponse({"status": "FAILURE", "error": str(task_result.info)})
@@ -119,3 +128,37 @@ async def get_analysis_result(task_id: str, db: Session = Depends(get_db)):
 @app.get("/", response_class=HTMLResponse)
 async def main():
     return FileResponse('app/static/index.html')
+
+@app.post("/rules/", response_model=schemas.CustomRule)
+def create_rule(rule: schemas.CustomRuleCreate, db: Session = Depends(get_db)):
+    return rules_crud.create_rule(db=db, rule=rule)
+
+@app.get("/rules/", response_model=list[schemas.CustomRule])
+def read_rules(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    rules = rules_crud.get_rules(db, skip=skip, limit=limit)
+    return rules
+
+@app.get("/rules/{rule_id}", response_model=schemas.CustomRule)
+def read_rule(rule_id: int, db: Session = Depends(get_db)):
+    db_rule = rules_crud.get_rule(db, rule_id=rule_id)
+    if db_rule is None:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    return db_rule
+
+@app.put("/rules/{rule_id}", response_model=schemas.CustomRule)
+def update_rule(rule_id: int, rule: schemas.CustomRuleUpdate, db: Session = Depends(get_db)):
+    db_rule = rules_crud.update_rule(db, rule_id=rule_id, rule=rule)
+    if db_rule is None:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    return db_rule
+
+@app.delete("/rules/{rule_id}", response_model=schemas.CustomRule)
+def delete_rule(rule_id: int, db: Session = Depends(get_db)):
+    db_rule = rules_crud.delete_rule(db, rule_id=rule_id)
+    if db_rule is None:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    return db_rule
+
+@app.get("/dashboard/")
+def get_dashboard_data(db: Session = Depends(get_db)):
+    return dashboard.get_dashboard_data(db)

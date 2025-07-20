@@ -7,19 +7,21 @@ This project is a file analysis service built with Python (FastAPI) and SQLAlche
 -   **Asynchronous File Analysis:** Upload various file types (text, CSV, JSON, XML, Word, Excel, PDF, images) and receive a task ID immediately. The analysis is performed in the background, and the results can be retrieved without blocking the user.
 -   **Real-time Text Analysis:** Paste text directly into a textarea for immediate analysis and feedback.
 -   **Enhanced Rule-Based Scanning:** The analysis now includes more sophisticated patterns for common sensitive data (e.g., emails, credit cards, API keys, SSNs, private keys) with weighted risk scoring, as well as entropy-based detection for secrets.
+-   **Customizable Analysis Rules:** Users can define and manage their own regex-based rules for sensitive data detection through the web interface.
+-   **Analysis Dashboard:** Provides a visual overview of analysis results, including total files analyzed, risk distribution, and risk by type.
 -   **Machine Learning Ready:** Includes a script (`train_ner_model.py`) to fine-tune a `distilbert-base-uncased` model for Named Entity Recognition (NER) to detect custom sensitive data types.
 -   **Image Content Analysis:** Extends beyond OCR to use computer vision models to detect sensitive objects in images, such as credit cards or ID cards.
--   **Database Integration:** Analysis results are stored in a SQLite database using SQLAlchemy, allowing for easy migration to other databases like PostgreSQL.
+-   **Database Integration:** Analysis results are stored in a MongoDB database, providing a scalable and flexible NoSQL solution. Custom rules are stored in a SQLite database using SQLAlchemy.
 -   **Modern UI:** The user interface is built with Bootstrap and uses asynchronous JavaScript to poll for results.
 
 ## Technologies Used
 
 -   **Backend:** Python 3.9, FastAPI
 -   **Task Queue:** Celery, Redis
--   **Database:** SQLite (with SQLAlchemy for ORM)
+-   **Database:** MongoDB, SQLite (with SQLAlchemy for ORM)
 -   **Frontend:** HTML, Bootstrap, JavaScript
 -   **ML/NLP:** PyTorch, Hugging Face Transformers
--   **Libraries:** `python-multipart`, `scikit-learn`, `python-docx`, `openpyxl`, `pytesseract`, `Pillow`, `pdfminer.six`
+-   **Libraries:** `python-multipart`, `scikit-learn`, `python-docx`, `openpyxl`, `pytesseract`, `Pillow`, `pdfminer.six`, `SQLAlchemy`
 
 ## Architecture
 
@@ -29,7 +31,9 @@ The application uses a client-server architecture with a background task queue f
 2.  **FastAPI Server:** The server receives the request and creates a new analysis task.
 3.  **Celery Task Queue:** The task is sent to a Celery worker for processing.
 4.  **Redis:** Redis serves as the message broker and result backend for Celery.
-5.  **Client Polling:** The client polls the server for the analysis results using the task ID.
+5.  **MongoDB:** Stores the detailed analysis results.
+6.  **SQLite:** Stores custom analysis rules.
+7.  **Client Polling:** The client polls the server for the analysis results using the task ID.
 
 ## Getting Started
 
@@ -84,13 +88,13 @@ PYTHONPATH=. uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 #### Option 2: Run with Docker Compose (Recommended)
 
-For a containerized setup, use Docker Compose. This will build the Docker image and run the application, Redis, and a Celery worker in separate containers.
+For a containerized setup, use Docker Compose. This will build the Docker image and run the application, Redis, MongoDB, and a Celery worker in separate containers.
 
 ```bash
 docker-compose up --build
 ```
 
-This command will build the Docker image (if not already built) and start all the services. The application will be accessible on port 8000.
+This command will build the Docker image (if not already built) and start all the services. The application will be accessible on port `8000`.
 
 ### 4. Access the Application
 
@@ -130,10 +134,12 @@ The `train_ner_model.py` script performs the following steps:
 risk_control_platform/
 ├── app/
 │   ├── analysis.py       # Contains the file analysis logic
-│   ├── crud.py           # Database operations
-│   ├── database.py       # Database connection setup
+│   ├── crud.py           # Database operations for MongoDB
+│   ├── database.py       # Database connection setup (MongoDB and SQLite)
+│   ├── dashboard.py      # Logic for generating dashboard data
 │   ├── main.py           # Main FastAPI application
-│   ├── models.py         # Database models
+│   ├── models.py         # Database models (MongoDB Pydantic and SQLite SQLAlchemy)
+│   ├── rules_crud.py     # Database operations for SQLite custom rules
 │   ├── schemas.py        # Pydantic models
 │   └── static/
 │       └── index.html    # Main HTML file for the UI

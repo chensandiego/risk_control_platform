@@ -9,9 +9,36 @@ from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from torchvision.transforms import functional as F
 from PIL import Image
 
+from . import crud, schemas, rules_crud
+from .database import SessionLocal
+
 # Define sensitive data patterns and their associated risk weights
 SENSITIVE_PATTERNS = {
-    # ... (patterns remain the same)
+    "email_addresses": {
+        "pattern": r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+        "weight": 5,
+        "description": "Potential email addresses found."
+    },
+    "credit_card_numbers": {
+        "pattern": r'\b(?:\d[ -]*?){13,16}\b',
+        "weight": 10,
+        "description": "Potential credit card numbers found."
+    },
+    "api_keys": {
+        "pattern": r"(?:api_key|API_KEY|token|bearer|secret)[\s=:]*['\"]?([a-zA-Z0-9-_\.]{16,})['\"]?",
+        "weight": 15,
+        "description": "Potential API keys or tokens found."
+    },
+    "social_security_numbers": {
+        "pattern": r'\b\d{3}-\d{2}-\d{4}\b',
+        "weight": 20,
+        "description": "Potential Social Security Numbers found."
+    },
+    "private_keys": {
+        "pattern": r'-----BEGIN (RSA|DSA|EC|PGP) PRIVATE KEY-----',
+        "weight": 25,
+        "description": "Potential private cryptographic keys found."
+    }
 }
 
 # Load a pre-trained object detection model
@@ -49,12 +76,19 @@ def analyze_image_content(image_bytes: bytes):
             detected_objects.append(label)
     return detected_objects
 
-def shannon_entropy(data, iterator):
-    # ... (implementation remains the same)
-    return 0
+def shannon_entropy(data):
+    """Calculate the Shannon entropy of a string."""
+    if not data:
+        return 0
+    entropy = 0
+    for x in set(data):
+        p_x = float(data.count(x))/len(data)
+        if p_x > 0:
+            entropy += - p_x*math.log(p_x, 2)
+    return entropy
 
 @celery_app.task
-def analyze_file_task(content: bytes, content_type: str):
+def analyze_file_task(content: bytes, content_type: str, filename: str):
     time.sleep(5)
     total_risk_score = 0
     findings = {}
@@ -71,18 +105,114 @@ def analyze_file_task(content: bytes, content_type: str):
             total_risk_score += len(detected_objects) * 10
 
     content_str = content.decode('utf-8', errors='ignore')
-    # ... (rest of the analysis logic remains the same)
 
-    return {
+    # Regex-based scanning
+    for category, data in SENSITIVE_PATTERNS.items():
+        matches = re.findall(data["pattern"], content_str)
+        if matches:
+            findings[category] = {
+                "count": len(matches),
+                "matches": matches,
+                "description": data["description"],
+                "risk_contribution": len(matches) * data["weight"]
+            }
+            total_risk_score += len(matches) * data["weight"]
+
+    # Custom rule-based scanning
+    db = SessionLocal()
+    custom_rules = rules_crud.get_rules(db)
+    db.close()
+
+    for rule in custom_rules:
+        matches = re.findall(rule.pattern, content_str)
+        if matches:
+            category = f"custom_rule_{rule.id}"
+            findings[category] = {
+                "count": len(matches),
+                "matches": matches,
+                "description": rule.description,
+                "risk_contribution": len(matches) * 10  # Default weight for custom rules
+            }
+            total_risk_score += len(matches) * 10
+
+    # Entropy-based secret detection
+    high_entropy_strings = []
+    for word in content_str.split():
+        if len(word) > 20: # Only check longer strings
+            entropy = shannon_entropy(word)
+            if entropy > 4.5: # High entropy threshold
+                high_entropy_strings.append(word)
+
+    if high_entropy_strings:
+        findings["high_entropy_secrets"] = {
+            "count": len(high_entropy_strings),
+            "matches": high_entropy_strings,
+            "description": "Potential secrets detected based on high entropy.",
+            "risk_contribution": len(high_entropy_strings) * 30 # High weight for entropy-based findings
+        }
+        total_risk_score += len(high_entropy_strings) * 30
+
+    anomalies = []
+    if len(content_str) > 100000:
+        anomalies.append("File size is unusually large (over 100KB).")
+        total_risk_score += 50
+
+    if anomalies:
+        findings["anomalies"] = {
+            "count": len(anomalies),
+            "matches": anomalies,
+            "description": "Potential anomalies detected.",
+            "risk_contribution": 50
+        }
+
+    summary = generate_risk_summary(total_risk_score, findings)
+
+    analysis_data = {
         "overall_risk_score": total_risk_score,
         "detailed_findings": findings,
-        "summary": generate_risk_summary(total_risk_score, findings)
+        "summary": summary,
+        "filename": filename,
+        "content_type": content_type
     }
 
+    # Save to MongoDB
+    result_to_save = schemas.AnalysisResultCreate(
+        filename=filename,
+        content_type=content_type,
+        risk_score=analysis_data['overall_risk_score'],
+        findings=analysis_data['detailed_findings']
+    )
+    saved_result = crud.create_analysis_result(result=result_to_save)
+
+    # Add the MongoDB ID to the returned data for caching and frontend display
+    analysis_data["_id"] = str(saved_result["_id"])
+    analysis_data["id"] = str(saved_result["_id"])
+
+    return analysis_data
+
 def generate_risk_summary(score: int, findings: dict):
-    # ... (implementation remains the same)
-    return ""
+    summary_lines = [f"Overall Risk Score: {score}"]
+    
+    if score == 0:
+        summary_lines.append("No significant risks detected.")
+    elif score < 50:
+        summary_lines.append("Low risk: Minor issues found.")
+    elif score < 150:
+        summary_lines.append("Medium risk: Some sensitive data or anomalies detected.")
+    else:
+        summary_lines.append("High risk: Significant sensitive data or critical anomalies detected. Immediate review recommended.")
+
+    if findings:
+        summary_lines.append("\nDetailed Findings:")
+        for category, data in findings.items():
+            summary_lines.append(f"- {data['description']} (Count: {data['count']}, Risk Contribution: {data['risk_contribution']})")
+    
+    return "\n".join(summary_lines)
 
 if __name__ == "__main__":
-    # ... (main block remains the same)
+    sample_content = b"my api key is: aS1k2j3h4g5f6d7s8a9p0o1i2u3y4t5r6e7w8q9z0x. and some other text"
+    # To test the task, you would typically call .delay() or .apply_async()
+    # For simple local testing, you can call the function directly:
+    # result = analyze_file_task(sample_content, "text/plain", "sample.txt")
+    # print(result["summary"])
     pass

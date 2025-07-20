@@ -4,8 +4,7 @@ pymongo
 redis
 requests
 python-dotenv
-sqlalchemy
-alembic
+
 python-multipart
 torch
 transformers
@@ -18,3 +17,6 @@ pdfminer.six
 celery[redis]
 torch
 torchvision
+pytest
+httpx
+SQLAlchemy

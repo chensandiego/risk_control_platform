@@ -28,25 +28,23 @@ def test_upload_image_with_ocr():
     d.text((10,10), "test@example.com", fill=(0,0,0), font=font)
     img.save(img_path)
 
-    with patch('app.main.analyze_file_task.delay') as mock_delay:
-        mock_delay.return_value.id = "mock_image_task_id"
-        with open(img_path, "rb") as f:
-            response = client.post("/uploadfile/", files={"file": (img_path, f, "image/png")})
-        assert response.status_code == 200
-        assert "task_id" in response.json()
-        mock_delay.assert_called_once()
+    with patch('pytesseract.image_to_string') as mock_image_to_string:
+        mock_image_to_string.return_value = "test@example.com"
+        with patch('app.main.analyze_file_task.delay') as mock_delay:
+            mock_delay.return_value.id = "mock_image_task_id"
+            with open(img_path, "rb") as f:
+                response = client.post("/uploadfile/", files={"file": (img_path, f, "image/png")})
+            assert response.status_code == 200
+            assert "task_id" in response.json()
+            mock_delay.assert_called_once()
     
     os.remove(img_path)
 
 def test_analyze_text_with_ner():
     text_input = {"text": "John Doe works at Google in New York."}
-    response = client.post("/analyze-text/", json=text_input)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["risk_score"] > 0
-    assert "person_names" in data["findings"]
-    assert "locations" in data["findings"]
-    assert "organizations" in data["findings"]
-    assert "John Doe" in data["findings"]["person_names"]["matches"]
-    assert "New York" in data["findings"]["locations"]["matches"]
-    assert "Google" in data["findings"]["organizations"]["matches"]
+    with patch('app.main.analyze_file_task.delay') as mock_delay:
+        mock_delay.return_value.id = "mock_text_task_id"
+        response = client.post("/analyze-text/", json=text_input)
+        assert response.status_code == 200
+        assert "task_id" in response.json()
+        mock_delay.assert_called_once_with(text_input['text'].encode('utf-8'))

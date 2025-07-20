@@ -6,17 +6,26 @@ services:
     ports:
       - "6379:6379"
 
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data/db:/data/db
+
   fastapi-app:
     build: .
     ports:
-      - "8000:8000"
+      - "8000:80"
     volumes:
       - .:/app
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - MONGO_DETAILS=mongodb://mongo:27017
       - PYTHONPATH=.
     depends_on:
       - redis
+      - mongo
 
   celery-worker:
     build: .
@@ -25,7 +34,9 @@ services:
       - .:/app
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - MONGO_DETAILS=mongodb://mongo:27017
       - PYTHONPATH=.
     depends_on:
       - redis
       - fastapi-app
+      - mongo
