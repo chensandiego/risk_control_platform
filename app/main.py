@@ -22,7 +22,7 @@ import os
 
 from . import crud, models, schemas, rules_crud, dashboard
 from .database import SessionLocal, engine, get_db
-from .analysis import analyze_file_task
+from .analysis import analyze_file_task, redact_file, quarantine_file
 from celery_app import celery_app
 
 models.Base.metadata.create_all(bind=engine)
@@ -35,77 +35,36 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 redis_client = redis.from_url(REDIS_URL)
 
-def extract_text_from_csv(file_content: bytes) -> str:
-    decoded_content = file_content.decode('utf-8').splitlines()
-    reader = csv.reader(decoded_content)
-    return "\n".join([",".join(row) for row in reader])
-
-def extract_text_from_json(file_content: bytes) -> str:
-    return json.dumps(json.loads(file_content.decode('utf-8')))
-
-def extract_text_from_xml(file_content: bytes) -> str:
-    root = ET.fromstring(file_content)
-    return ET.tostring(root, encoding='unicode', method='text')
-
-def extract_text_from_docx(file_content: bytes) -> str:
-    doc = Document(io.BytesIO(file_content))
-    return "\n".join([para.text for para in doc.paragraphs])
-
-def extract_text_from_xlsx(file_content: bytes) -> str:
-    workbook = openpyxl.load_workbook(io.BytesIO(file_content))
-    return "\n".join([str(cell.value) for row in workbook.active.iter_rows() for cell in row if cell.value is not None])
-
-def extract_text_from_pdf(file_content: bytes) -> str:
-    rsrcmgr = PDFResourceManager()
-    retstr = io.StringIO()
-    laparams = LAParams()
-    device = TextConverter(rsrcmgr, retstr, laparams=laparams)
-    fp = io.BytesIO(file_content)
-    interpreter = PDFPageInterpreter(rsrcmgr, device)
-    for page in PDFPage.get_pages(fp):
-        interpreter.process_page(page)
-    text = retstr.getvalue()
-    fp.close()
-    device.close()
-    retstr.close()
-    return text
-
-def extract_text_from_image(file_content: bytes) -> str:
-    image = Image.open(io.BytesIO(file_content))
-    return pytesseract.image_to_string(image)
-
 @app.post("/uploadfile/")
 async def create_upload_file(file: UploadFile = File(...)):
     content = await file.read()
-    extracted_text = ""
-
-    if file.content_type == "text/plain":
-        extracted_text = content.decode('utf-8')
-    elif file.content_type == "text/csv":
-        extracted_text = extract_text_from_csv(content)
-    elif file.content_type == "application/json":
-        extracted_text = extract_text_from_json(content)
-    elif file.content_type == "application/xml" or file.content_type == "text/xml":
-        extracted_text = extract_text_from_xml(content)
-    elif file.content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        extracted_text = extract_text_from_docx(content)
-    elif file.content_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-        extracted_text = extract_text_from_xlsx(content)
-    elif file.content_type == "application/pdf":
-        extracted_text = extract_text_from_pdf(content)
-    elif file.content_type.startswith("image/"):
-        extracted_text = extract_text_from_image(content)
-    else:
-        raise HTTPException(status_code=400, detail=f"Unsupported file type: {file.content_type}")
-
-    task = analyze_file_task.delay(extracted_text.encode('utf-8'), file.content_type, file.filename)
-    
+    task = analyze_file_task.delay(content, file.content_type, file.filename)
     return JSONResponse({"task_id": task.id})
 
 @app.post("/analyze-text/")
 async def analyze_text_directly(text_data: schemas.TextInput):
     task = analyze_file_task.delay(text_data.text.encode('utf-8'), "text/plain", "Direct Text Input")
     return JSONResponse({"task_id": task.id})
+
+@app.post("/remediate/{task_id}")
+async def remediate_file(task_id: str, action: str):
+    task_result = AsyncResult(task_id, app=celery_app)
+    if not task_result.ready() or not task_result.successful():
+        raise HTTPException(status_code=404, detail="Task not found or not completed")
+
+    result = task_result.get()
+    filename = result.get("filename")
+    content = result.get("original_content")
+    findings = result.get("detailed_findings")
+
+    if action == "redact":
+        redacted_content = redact_file(content.encode('utf-8'), findings)
+        return FileResponse(io.BytesIO(redacted_content), media_type="application/octet-stream", filename=f"redacted_{filename}")
+    elif action == "quarantine":
+        quarantine_file(content.encode('utf-8'), filename)
+        return {"message": f"File {filename} has been quarantined."}
+    else:
+        raise HTTPException(status_code=400, detail="Invalid remediation action")
 
 @app.get("/results/{task_id}")
 async def get_analysis_result(task_id: str):
@@ -186,7 +145,7 @@ def update_rule(rule_id: int, rule: schemas.CustomRuleUpdate, db: Session = Depe
 def delete_rule(rule_id: int, db: Session = Depends(get_db)):
     db_rule = rules_crud.delete_rule(db, rule_id=rule_id)
     if db_rule is None:
-        raise HTTPException(status_code=404, detail="Rule not found")
+        raise HTTPException(status_code=44, detail="Rule not found")
     return db_rule
 
 @app.get("/dashboard/")

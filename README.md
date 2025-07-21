@@ -4,7 +4,9 @@ This project is a file analysis service built with Python (FastAPI) and SQLAlche
 
 ## Features
 
--   **Asynchronous File Analysis:** Upload various file types (text, CSV, JSON, XML, Word, Excel, PDF, images) and receive a task ID immediately. The analysis is performed in the background, and the results can be retrieved without blocking the user.
+-   **Asynchronous File Analysis:** Upload various file types (text, CSV, JSON, XML, Word, Excel, PDF, images, and archives like .zip and .tar) and receive a task ID immediately. The analysis is performed in the background, and the results can be retrieved without blocking the user.
+-   **Automated Remediation:** After detecting sensitive data, the application provides options to automatically redact the information from the file or move the file to a secure quarantine location. High-risk files are automatically quarantined.
+-   **Expanded File Support:** The application can now analyze archive files (like `.zip` and `.tar`), which can often contain nested sensitive information.
 -   **Real-time Text Analysis:** Paste text directly into a textarea for immediate analysis and feedback.
 -   **Enhanced Rule-Based Scanning:** The analysis now includes more sophisticated patterns for common sensitive data (e.g., emails, credit cards, API keys, SSNs, private keys) with weighted risk scoring, as well as entropy-based detection for secrets.
 -   **Advanced Rule Management UI:** A sophisticated web interface for managing custom analysis rules, including features for rule testing, versioning, and import/export capabilities.
