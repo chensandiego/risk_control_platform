@@ -1,7 +1,8 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
 from bson import ObjectId
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, DateTime
+from datetime import datetime
 
 from .database import Base
 
@@ -39,3 +40,5 @@ class CustomRule(Base):
     name = Column(String, index=True)
     pattern = Column(String)
     description = Column(String)
+    version = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)

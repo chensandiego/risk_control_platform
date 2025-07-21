@@ -7,6 +7,7 @@ This project is a file analysis service built with Python (FastAPI) and SQLAlche
 -   **Asynchronous File Analysis:** Upload various file types (text, CSV, JSON, XML, Word, Excel, PDF, images) and receive a task ID immediately. The analysis is performed in the background, and the results can be retrieved without blocking the user.
 -   **Real-time Text Analysis:** Paste text directly into a textarea for immediate analysis and feedback.
 -   **Enhanced Rule-Based Scanning:** The analysis now includes more sophisticated patterns for common sensitive data (e.g., emails, credit cards, API keys, SSNs, private keys) with weighted risk scoring, as well as entropy-based detection for secrets.
+-   **Advanced Rule Management UI:** A sophisticated web interface for managing custom analysis rules, including features for rule testing, versioning, and import/export capabilities.
 -   **Customizable Analysis Rules:** Users can define and manage their own regex-based rules for sensitive data detection through the web interface.
 -   **Analysis Dashboard:** Provides a visual overview of analysis results, including total files analyzed, risk distribution, and risk by type.
 -   **Machine Learning Ready:** Includes a script (`train_ner_model.py`) to fine-tune a `distilbert-base-uncased` model for Named Entity Recognition (NER) to detect custom sensitive data types.

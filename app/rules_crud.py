@@ -8,7 +8,7 @@ def get_rules(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.CustomRule).offset(skip).limit(limit).all()
 
 def create_rule(db: Session, rule: schemas.CustomRuleCreate):
-    db_rule = models.CustomRule(name=rule.name, pattern=rule.pattern, description=rule.description)
+    db_rule = models.CustomRule(name=rule.name, pattern=rule.pattern, description=rule.description, version=1)
     db.add(db_rule)
     db.commit()
     db.refresh(db_rule)
@@ -20,6 +20,7 @@ def update_rule(db: Session, rule_id: int, rule: schemas.CustomRuleUpdate):
         db_rule.name = rule.name
         db_rule.pattern = rule.pattern
         db_rule.description = rule.description
+        db_rule.version += 1
         db.commit()
         db.refresh(db_rule)
     return db_rule

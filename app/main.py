@@ -1,4 +1,6 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
+from typing import List
+import re
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -128,6 +130,34 @@ async def get_analysis_result(task_id: str):
 @app.get("/", response_class=HTMLResponse)
 async def main():
     return FileResponse('app/static/index.html')
+
+@app.post("/rules/test/")
+async def test_rule(request: schemas.RuleTestRequest):
+    try:
+        re.compile(request.pattern)
+    except re.error:
+        raise HTTPException(status_code=400, detail="Invalid regex pattern")
+    
+    matches = re.findall(request.pattern, request.text)
+    return {"matches": matches}
+
+@app.post("/rules/import/")
+async def import_rules(request: schemas.RuleImportRequest, db: Session = Depends(get_db)):
+    imported_count = 0
+    for rule_data in request.rules:
+        existing_rule = db.query(models.CustomRule).filter(models.CustomRule.name == rule_data.name).first()
+        if existing_rule:
+            # For simplicity, we'll update the existing rule. A more sophisticated approach might handle versioning or conflicts.
+            rules_crud.update_rule(db, existing_rule.id, rule_data)
+        else:
+            rules_crud.create_rule(db, rule_data)
+        imported_count += 1
+    return {"message": f"Successfully imported {imported_count} rules."}
+
+@app.get("/rules/export/", response_model=List[schemas.CustomRule])
+async def export_rules(db: Session = Depends(get_db)):
+    rules = rules_crud.get_rules(db)
+    return rules
 
 @app.post("/rules/", response_model=schemas.CustomRule)
 def create_rule(rule: schemas.CustomRuleCreate, db: Session = Depends(get_db)):

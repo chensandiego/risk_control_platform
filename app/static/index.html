@@ -7,7 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f8f9fa; }
-        .container { max-width: 700px; margin-top: 50px; }
+        .container { max-width: 900px; margin-top: 50px; }
         .card { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         #results-card { display: none; }
         .spinner-border { display: none; }
@@ -80,36 +80,79 @@
         <div class="card mt-4" id="rules-card">
             <div class="card-body">
                 <h2 class="card-title">Custom Analysis Rules</h2>
-                <form id="rule-form" class="mb-4">
-                    <input type="hidden" id="rule-id">
-                    <div class="mb-3">
-                        <label for="rule-name" class="form-label">Rule Name</label>
-                        <input type="text" class="form-control" id="rule-name" required>
+                
+                <ul class="nav nav-tabs mb-3" id="rulesTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage" type="button" role="tab" aria-controls="manage" aria-selected="true">Manage Rules</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="test-tab" data-bs-toggle="tab" data-bs-target="#test" type="button" role="tab" aria-controls="test" aria-selected="false">Test Rule</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="import-export-tab" data-bs-toggle="tab" data-bs-target="#import-export" type="button" role="tab" aria-controls="import-export" aria-selected="false">Import/Export</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="rulesTabContent">
+                    <div class="tab-pane fade show active" id="manage" role="tabpanel" aria-labelledby="manage-tab">
+                        <form id="rule-form" class="mb-4">
+                            <input type="hidden" id="rule-id">
+                            <div class="mb-3">
+                                <label for="rule-name" class="form-label">Rule Name</label>
+                                <input type="text" class="form-control" id="rule-name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="rule-pattern" class="form-label">RegEx Pattern</label>
+                                <input type="text" class="form-control" id="rule-pattern" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="rule-description" class="form-label">Description</label>
+                                <input type="text" class="form-control" id="rule-description">
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-info">Save Rule</button>
+                            </div>
+                        </form>
+                        <h3 class="mt-4">Existing Rules</h3>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Pattern</th>
+                                    <th>Description</th>
+                                    <th>Version</th>
+                                    <th>Created At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rules-table-body"></tbody>
+                        </table>
                     </div>
-                    <div class="mb-3">
-                        <label for="rule-pattern" class="form-label">RegEx Pattern</label>
-                        <input type="text" class="form-control" id="rule-pattern" required>
+                    <div class="tab-pane fade" id="test" role="tabpanel" aria-labelledby="test-tab">
+                        <div class="mb-3">
+                            <label for="test-pattern" class="form-label">Pattern to Test</label>
+                            <input type="text" class="form-control" id="test-pattern" placeholder="Enter regex pattern">
+                        </div>
+                        <div class="mb-3">
+                            <label for="test-text" class="form-label">Text to Test Against</label>
+                            <textarea class="form-control" id="test-text" rows="5" placeholder="Enter text to test the pattern against"></textarea>
+                        </div>
+                        <button type="button" class="btn btn-primary" id="test-rule-btn">Test Rule</button>
+                        <div class="mt-3" id="test-results"></div>
                     </div>
-                    <div class="mb-3">
-                        <label for="rule-description" class="form-label">Description</label>
-                        <input type="text" class="form-control" id="rule-description">
+                    <div class="tab-pane fade" id="import-export" role="tabpanel" aria-labelledby="import-export-tab">
+                        <h4 class="mt-3">Export Rules</h4>
+                        <button type="button" class="btn btn-secondary mb-3" id="export-rules-btn">Export All Rules</button>
+                        <pre id="exported-rules-output" class="bg-light p-3 rounded" style="display:none;"></pre>
+
+                        <h4 class="mt-3">Import Rules</h4>
+                        <div class="mb-3">
+                            <label for="import-rules-json" class="form-label">Paste Rules JSON</label>
+                            <textarea class="form-control" id="import-rules-json" rows="8" placeholder="Paste JSON array of rules here"></textarea>
+                        </div>
+                        <button type="button" class="btn btn-success" id="import-rules-btn">Import Rules</button>
+                        <div class="mt-3" id="import-status"></div>
                     </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-info">Save Rule</button>
-                    </div>
-                </form>
-                <h3 class="mt-4">Existing Rules</h3>
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Pattern</th>
-                            <th>Description</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rules-table-body"></tbody>
-                </table>
+                </div>
             </div>
         </div>
 
@@ -124,6 +167,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const uploadForm = document.getElementById('upload-form');
         const fileInput = document.getElementById('file-input');
@@ -184,6 +228,20 @@
         const lowRiskFiles = document.getElementById('low-risk-files');
         const riskByTypeList = document.getElementById('risk-by-type-list');
 
+        // New elements for rule testing
+        const testPatternInput = document.getElementById('test-pattern');
+        const testTextInput = document.getElementById('test-text');
+        const testRuleBtn = document.getElementById('test-rule-btn');
+        const testResultsDiv = document.getElementById('test-results');
+
+        // New elements for import/export
+        const exportRulesBtn = document.getElementById('export-rules-btn');
+        const exportedRulesOutput = document.getElementById('exported-rules-output');
+        const importRulesJsonInput = document.getElementById('import-rules-json');
+        const importRulesBtn = document.getElementById('import-rules-btn');
+        const importStatusDiv = document.getElementById('import-status');
+
+
         async function fetchDashboardData() {
             const response = await fetch('/dashboard/');
             const data = await response.json();
@@ -208,13 +266,16 @@
             rulesTableBody.innerHTML = '';
             rules.forEach(rule => {
                 const row = document.createElement('tr');
+                const createdAt = new Date(rule.created_at).toLocaleString();
                 row.innerHTML = `
                     <td>${rule.name}</td>
-                    <td>${rule.pattern}</td>
-                    <td>${rule.description}</td>
+                    <td><code>${rule.pattern}</code></td>
+                    <td>${rule.description || ''}</td>
+                    <td>${rule.version}</td>
+                    <td>${createdAt}</td>
                     <td>
-                        <button class="btn btn-sm btn-warning" onclick="editRule('${rule._id}', '${rule.name}', '${rule.pattern}', '${rule.description}')">Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteRule('${rule._id}')">Delete</button>
+                        <button class="btn btn-sm btn-warning" onclick="editRule(${rule.id}, '${rule.name}', '${rule.pattern}', '${rule.description || ''}')">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteRule(${rule.id})">Delete</button>
                     </td>
                 `;
                 rulesTableBody.appendChild(row);
@@ -233,15 +294,20 @@
             const url = ruleId ? `/rules/${ruleId}` : '/rules/';
             const method = ruleId ? 'PUT' : 'POST';
 
-            await fetch(url, {
+            const response = await fetch(url, {
                 method: method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(rule)
             });
 
-            ruleForm.reset();
-            ruleIdInput.value = '';
-            fetchRules();
+            if (response.ok) {
+                ruleForm.reset();
+                ruleIdInput.value = '';
+                fetchRules();
+            } else {
+                const errorData = await response.json();
+                alert(`Error saving rule: ${errorData.detail}`);
+            }
         }
 
         function editRule(id, name, pattern, description) {
@@ -253,12 +319,99 @@
 
         async function deleteRule(id) {
             if (confirm('Are you sure you want to delete this rule?')) {
-                await fetch(`/rules/${id}`, { method: 'DELETE' });
-                fetchRules();
+                const response = await fetch(`/rules/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    fetchRules();
+                } else {
+                    const errorData = await response.json();
+                    alert(`Error deleting rule: ${errorData.detail}`);
+                }
             }
         }
 
+        async function testRule() {
+            const pattern = testPatternInput.value;
+            const text = testTextInput.value;
+
+            if (!pattern || !text) {
+                testResultsDiv.innerHTML = '<div class="alert alert-warning">Please enter both a pattern and text to test.</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/rules/test/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pattern, text })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (data.matches && data.matches.length > 0) {
+                        testResultsDiv.innerHTML = `<div class="alert alert-success">Found ${data.matches.length} match(es): <pre>${JSON.stringify(data.matches, null, 2)}</pre></div>`;
+                    } else {
+                        testResultsDiv.innerHTML = '<div class="alert alert-info">No matches found.</div>';
+                    }
+                } else {
+                    testResultsDiv.innerHTML = `<div class="alert alert-danger">Error testing rule: ${data.detail}</div>`;
+                }
+            } catch (error) {
+                testResultsDiv.innerHTML = `<div class="alert alert-danger">An unexpected error occurred: ${error.message}</div>`;
+            }
+        }
+
+        async function exportRules() {
+            try {
+                const response = await fetch('/rules/export/');
+                const rules = await response.json();
+                exportedRulesOutput.textContent = JSON.stringify(rules, null, 2);
+                exportedRulesOutput.style.display = 'block';
+            } catch (error) {
+                exportedRulesOutput.textContent = `Error exporting rules: ${error.message}`;
+                exportedRulesOutput.style.display = 'block';
+                exportedRulesOutput.className = 'bg-danger text-white p-3 rounded';
+            }
+        }
+
+        async function importRules() {
+            const jsonString = importRulesJsonInput.value;
+            if (!jsonString) {
+                importStatusDiv.innerHTML = '<div class="alert alert-warning">Please paste JSON data to import.</div>';
+                return;
+            }
+
+            try {
+                const rulesToImport = JSON.parse(jsonString);
+                if (!Array.isArray(rulesToImport)) {
+                    importStatusDiv.innerHTML = '<div class="alert alert-danger">Invalid JSON format. Expected a JSON array of rules.</div>';
+                    return;
+                }
+
+                const response = await fetch('/rules/import/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rules: rulesToImport })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    importStatusDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                    importRulesJsonInput.value = '';
+                    fetchRules(); // Refresh the rules list
+                } else {
+                    importStatusDiv.innerHTML = `<div class="alert alert-danger">Error importing rules: ${data.detail}</div>`;
+                }
+            } catch (error) {
+                importStatusDiv.innerHTML = `<div class="alert alert-danger">Invalid JSON format: ${error.message}</div>`;
+            }
+        }
+
+
         ruleForm.addEventListener('submit', saveRule);
+        testRuleBtn.addEventListener('click', testRule);
+        exportRulesBtn.addEventListener('click', exportRules);
+        importRulesBtn.addEventListener('click', importRules);
+
         fetchRules();
         fetchDashboardData();
 
