@@ -15,8 +15,9 @@ pytesseract
 Pillow
 pdfminer.six
 celery[redis]
-torch
 torchvision
 pytest
 httpx
 SQLAlchemy
+seqeval
+optuna

@@ -1,0 +1,4 @@
+{"tokens": ["My", "name", "is", "John", "Doe", "and", "my", "email", "is", "john.doe@email.com"], "ner_tags": ["O", "O", "O", "B-PII", "I-PII", "O", "O", "O", "O", "B-PII"]}
+{"tokens": ["Please", "contact", "Jane", "Smith", "at", "jane.smith@work.net"], "ner_tags": ["O", "O", "B-PII", "I-PII", "O", "B-PII"]}
+{"tokens": ["The", "user", "is", "anonymous"], "ner_tags": ["O", "O", "O", "O"]}
+{"tokens": ["Send", "the", "report", "to", "test.user@company.org"], "ner_tags": ["O", "O", "O", "O", "B-PII"]}
