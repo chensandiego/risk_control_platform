@@ -44,3 +44,28 @@ class RuleTestRequest(BaseModel):
 
 class RuleImportRequest(BaseModel):
     rules: List[CustomRuleCreate]
+
+class S3ScanRequest(BaseModel):
+    bucket_name: str
+    object_key: str
+
+class GoogleDriveScanRequest(BaseModel):
+    file_id: str
+
+class DropboxScanRequest(BaseModel):
+    file_path: str
+
+class PostgreSQLScanRequest(BaseModel):
+    table_name: str
+
+class MySQLScanRequest(BaseModel):
+    table_name: str
+
+class GitHubScanRequest(BaseModel):
+    repo_name: str
+    file_path: str
+
+class GitLabScanRequest(BaseModel):
+    project_id: int
+    file_path: str
+    ref: str = "main"

@@ -23,6 +23,7 @@ import os
 from . import crud, models, schemas, rules_crud, dashboard
 from .database import SessionLocal, engine, get_db
 from .analysis import analyze_file_task, redact_file, quarantine_file
+from .connectors import s3, google_drive, dropbox, postgresql, mysql, github, gitlab
 from celery_app import celery_app
 
 models.Base.metadata.create_all(bind=engine)
@@ -44,6 +45,98 @@ async def create_upload_file(file: UploadFile = File(...)):
 @app.post("/analyze-text/")
 async def analyze_text_directly(text_data: schemas.TextInput):
     task = analyze_file_task.delay(text_data.text.encode('utf-8'), "text/plain", "Direct Text Input")
+    return JSONResponse({"task_id": task.id})
+
+@app.post("/scan-s3-file/")
+async def scan_s3_file(scan_request: schemas.S3ScanRequest):
+    """
+    Triggers a scan of a file stored in an S3 bucket.
+    """
+    content = s3.download_s3_file(scan_request.bucket_name, scan_request.object_key)
+    if isinstance(content, dict) and "error" in content:
+        raise HTTPException(status_code=400, detail=content["error"])
+
+    # Assuming the content is bytes, and we can derive a content_type
+    # A more robust implementation might get the content_type from S3 metadata
+    task = analyze_file_task.delay(content, "application/octet-stream", scan_request.object_key)
+    return JSONResponse({"task_id": task.id})
+
+@app.post("/scan-google-drive-file/")
+async def scan_google_drive_file(scan_request: schemas.GoogleDriveScanRequest):
+    """
+    Triggers a scan of a file stored in Google Drive.
+    """
+    content = google_drive.download_drive_file(scan_request.file_id)
+    if isinstance(content, dict) and "error" in content:
+        raise HTTPException(status_code=400, detail=content["error"])
+
+    # Assuming the content is bytes, and we can derive a content_type
+    # A more robust implementation might get the content_type from Google Drive metadata
+    task = analyze_file_task.delay(content, "application/octet-stream", scan_request.file_id)
+    return JSONResponse({"task_id": task.id})
+
+@app.post("/scan-dropbox-file/")
+async def scan_dropbox_file(scan_request: schemas.DropboxScanRequest):
+    """
+    Triggers a scan of a file stored in Dropbox.
+    """
+    content = dropbox.download_dropbox_file(scan_request.file_path)
+    if isinstance(content, dict) and "error" in content:
+        raise HTTPException(status_code=400, detail=content["error"])
+
+    # Assuming the content is bytes, and we can derive a content_type
+    # A more robust implementation might get the content_type from Dropbox metadata
+    task = analyze_file_task.delay(content, "application/octet-stream", scan_request.file_path)
+    return JSONResponse({"task_id": task.id})
+
+@app.post("/scan-postgresql-table/")
+async def scan_postgresql_table(scan_request: schemas.PostgreSQLScanRequest):
+    """
+    Triggers a scan of a PostgreSQL table.
+    """
+    content = postgresql.scan_table(scan_request.table_name)
+    if isinstance(content, dict) and "error" in content:
+        raise HTTPException(status_code=400, detail=content["error"])
+
+    task = analyze_file_task.delay(content.encode('utf-8'), "text/plain", scan_request.table_name)
+    return JSONResponse({"task_id": task.id})
+
+@app.post("/scan-mysql-table/")
+async def scan_mysql_table(scan_request: schemas.MySQLScanRequest):
+    """
+    Triggers a scan of a MySQL table.
+    """
+    content = mysql.scan_table(scan_request.table_name)
+    if isinstance(content, dict) and "error" in content:
+        raise HTTPException(status_code=400, detail=content["error"])
+
+    task = analyze_file_task.delay(content.encode('utf-8'), "text/plain", scan_request.table_name)
+    return JSONResponse({"task_id": task.id})
+
+@app.post("/scan-github-file/")
+async def scan_github_file(scan_request: schemas.GitHubScanRequest):
+    """
+    Triggers a scan of a file in a GitHub repository.
+    """
+    content = github.get_repo_file_content(scan_request.repo_name, scan_request.file_path)
+    if isinstance(content, dict) and "error" in content:
+        raise HTTPException(status_code=400, detail=content["error"])
+
+    task = analyze_file_task.delay(content, "application/octet-stream", scan_request.file_path)
+    return JSONResponse({"task_id": task.id})
+
+@app.post("/scan-gitlab-file/")
+async def scan_gitlab_file(scan_request: schemas.GitLabScanRequest):
+    """
+    Triggers a scan of a file in a GitLab repository.
+    """
+    content = gitlab.get_project_file_content(
+        scan_request.project_id, scan_request.file_path, scan_request.ref
+    )
+    if isinstance(content, dict) and "error" in content:
+        raise HTTPException(status_code=400, detail=content["error"])
+
+    task = analyze_file_task.delay(content, "application/octet-stream", scan_request.file_path)
     return JSONResponse({"task_id": task.id})
 
 @app.post("/remediate/{task_id}")

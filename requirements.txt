@@ -21,3 +21,11 @@ httpx
 SQLAlchemy
 seqeval
 optuna
+boto3
+google-api-python-client
+google-auth-httplib2
+dropbox
+psycopg2-binary
+mysql-connector-python
+PyGithub
+python-gitlab

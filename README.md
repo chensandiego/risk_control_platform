@@ -16,6 +16,10 @@ This project is a file analysis service built with Python (FastAPI) and SQLAlche
 -   **Image Content Analysis:** Extends beyond OCR to use computer vision models to detect sensitive objects in images, such as credit cards or ID cards.
 -   **Database Integration:** Analysis results are stored in a MongoDB database, providing a scalable and flexible NoSQL solution. Custom rules are stored in a SQLite database using SQLAlchemy.
 -   **Modern UI:** The user interface is built with Bootstrap and uses asynchronous JavaScript to poll for results.
+-   **Automated Data Source Scanning:** Connect to and scan data from various sources, including:
+    -   **Cloud Storage:** Amazon S3, Google Drive, Dropbox.
+    -   **Databases:** PostgreSQL, MySQL.
+    -   **Version Control Systems:** GitHub, GitLab, to detect secrets in code repositories.
 
 ## Technologies Used
 
@@ -24,7 +28,7 @@ This project is a file analysis service built with Python (FastAPI) and SQLAlche
 -   **Database:** MongoDB, SQLite (with SQLAlchemy for ORM)
 -   **Frontend:** HTML, Bootstrap, JavaScript
 -   **ML/NLP:** PyTorch, Hugging Face Transformers
--   **Libraries:** `python-multipart`, `scikit-learn`, `python-docx`, `openpyxl`, `pytesseract`, `Pillow`, `pdfminer.six`, `SQLAlchemy`
+-   **Libraries:** `python-multipart`, `scikit-learn`, `python-docx`, `openpyxl`, `pytesseract`, `Pillow`, `pdfminer.six`, `SQLAlchemy`, `boto3`, `google-api-python-client`, `google-auth-httplib2`, `dropbox`, `psycopg2-binary`, `mysql-connector-python`, `PyGithub`, `python-gitlab`
 
 ## Architecture
 
@@ -153,3 +157,26 @@ risk_control_platform/
 ├── Dockerfile            # Dockerfile for the application
 └── README.md             # This file
 ```
+
+## API Endpoints
+
+-   `POST /uploadfile/`: Upload a file for analysis.
+-   `POST /analyze-text/`: Submit text for analysis.
+-   `POST /scan-s3-file/`: Scan a file from an S3 bucket.
+-   `POST /scan-google-drive-file/`: Scan a file from Google Drive.
+-   `POST /scan-dropbox-file/`: Scan a file from Dropbox.
+-   `POST /scan-postgresql-table/`: Scan a table from a PostgreSQL database.
+-   `POST /scan-mysql-table/`: Scan a table from a MySQL database.
+-   `POST /scan-github-file/`: Scan a file from a GitHub repository.
+-   `POST /scan-gitlab-file/`: Scan a file from a GitLab repository.
+-   `GET /results/{task_id}`: Retrieve the analysis results for a given task ID.
+-   `POST /remediate/{task_id}`: Perform remediation actions (redact or quarantine) on a file.
+-   `GET /rules/`: Get a list of custom rules.
+-   `POST /rules/`: Create a new custom rule.
+-   `GET /rules/{rule_id}`: Get a specific custom rule.
+-   `PUT /rules/{rule_id}`: Update a custom rule.
+-   `DELETE /rules/{rule_id}`: Delete a custom rule.
+-   `POST /rules/test/`: Test a regex pattern against a sample text.
+-   `POST /rules/import/`: Import a list of rules.
+-   `GET /rules/export/`: Export all custom rules.
+-   `GET /dashboard/`: Get data for the analysis dashboard.
