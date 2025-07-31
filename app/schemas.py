@@ -70,6 +70,16 @@ class GitLabScanRequest(BaseModel):
     file_path: str
     ref: str = "main"
 
+class DockerComposeScanRequest(BaseModel):
+    yaml_content: str
+
+class DockerfileScanRequest(BaseModel):
+    dockerfile_content: str
+
+class TrivyScanResult(BaseModel):
+    success: bool
+    output: str
+
 class ReportRequest(BaseModel):
     report_type: str  # "pdf" or "csv"
     task_ids: List[str]

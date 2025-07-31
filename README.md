@@ -20,6 +20,7 @@ This project is a file analysis service built with Python (FastAPI) and SQLAlche
     -   **Cloud Storage:** Amazon S3, Google Drive, Dropbox.
     -   **Databases:** PostgreSQL, MySQL.
     -   **Version Control Systems:** GitHub, GitLab, to detect secrets in code repositories.
+    -   **Dockerfile Scanning:** Scan Dockerfiles for vulnerabilities and hardcoded API keys using Trivy.
 
 ## Technologies Used
 
@@ -169,6 +170,7 @@ risk_control_platform/
 -   `POST /scan-mysql-table/`: Scan a table from a MySQL database.
 -   `POST /scan-github-file/`: Scan a file from a GitHub repository.
 -   `POST /scan-gitlab-file/`: Scan a file from a GitLab repository.
+-   `POST /scan-dockerfile/`: Scan a Dockerfile for vulnerabilities and hardcoded API keys.
 -   `GET /results/{task_id}`: Retrieve the analysis results for a given task ID.
 -   `POST /remediate/{task_id}`: Perform remediation actions (redact or quarantine) on a file.
 -   `GET /rules/`: Get a list of custom rules.

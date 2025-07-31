@@ -19,6 +19,7 @@ from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 import redis
 import os
+import asyncio
 
 from . import crud, models, schemas, rules_crud, dashboard
 from .database import SessionLocal, engine, get_db
@@ -244,3 +245,49 @@ def delete_rule(rule_id: int, db: Session = Depends(get_db)):
 @app.get("/dashboard/")
 def get_dashboard_data(db: Session = Depends(get_db)):
     return dashboard.get_dashboard_data(db)
+
+@app.post("/scan-docker-compose/", response_model=schemas.TrivyScanResult)
+async def scan_docker_compose(scan_request: schemas.DockerComposeScanRequest):
+    with open("temp_docker_compose.yml", "w") as f:
+        f.write(scan_request.yaml_content)
+    
+    process = await asyncio.create_subprocess_shell(
+        "trivy config temp_docker_compose.yml",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await process.communicate()
+    
+    os.remove("temp_docker_compose.yml")
+    
+    if process.returncode == 0:
+        return {"success": True, "output": stdout.decode()}
+    else:
+        return {"success": False, "output": stderr.decode()}
+
+@app.post("/scan-dockerfile/", response_model=schemas.TrivyScanResult)
+async def scan_dockerfile(scan_request: schemas.DockerfileScanRequest):
+    # Create a temporary file for the Dockerfile content
+    temp_dockerfile_path = "temp_dockerfile"
+    with open(temp_dockerfile_path, "w") as f:
+        f.write(scan_request.dockerfile_content)
+    
+    # Run Trivy to scan the Dockerfile for vulnerabilities and misconfigurations
+    # Using 'fs' subcommand for local file system scan, and '--security-checks vuln,config,secret'
+    # to include vulnerability, misconfiguration, and secret scanning.
+    process = await asyncio.create_subprocess_shell(
+        f"trivy fs --scanners vuln,misconfig,secret --file-patterns \"dockerfile:temp_dockerfile\" --format json {temp_dockerfile_path}",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await process.communicate()
+    
+    # Clean up the temporary Dockerfile
+    os.remove(temp_dockerfile_path)
+    
+    if process.returncode == 0:
+        return {"success": True, "output": stdout.decode()}
+    else:
+        # If Trivy exits with a non-zero code, it might indicate issues found or an error.
+        # We return the stderr as output for debugging in case of an error.
+        return {"success": False, "output": stderr.decode()}
