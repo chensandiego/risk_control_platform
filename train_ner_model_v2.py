@@ -13,7 +13,7 @@ LOGGING_DIR = "./ner_logs_v2"
 DATA_FILE = "./ner_data.jsonl"
 
 # --- 2. Define Your Labels ---
-labels_list = ["O", "B-PII", "I-PII"]
+labels_list = ["O", "B-PII", "I-PII", "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC"]
 label_map = {label: i for i, label in enumerate(labels_list)}
 
 # --- 3. Load Your Dataset ---
@@ -105,9 +105,6 @@ training_args = TrainingArguments(
     weight_decay=0.01,
     logging_dir=LOGGING_DIR,
     logging_steps=10,
-    evaluation_strategy="epoch",  # Evaluate at the end of each epoch
-    save_strategy="epoch",        # Save the model at the end of each epoch
-    load_best_model_at_end=True,  # Load the best model at the end of training
 )
 
 # --- 10. Define Evaluation Metrics ---

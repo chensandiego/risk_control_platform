@@ -8,6 +8,7 @@ import tarfile
 import os
 from celery_app import celery_app
 import torch
+from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 from torchvision.models.detection import fasterrcnn_resnet50_fpn
 from torchvision.transforms import functional as F
 from PIL import Image
@@ -51,6 +52,12 @@ SENSITIVE_PATTERNS = {
 # Load a pre-trained object detection model
 model = fasterrcnn_resnet50_fpn(pretrained=True)
 model.eval()
+
+# Load the fine-tuned NER model and tokenizer
+ner_model_path = "./ner_model_v2"
+ner_tokenizer = AutoTokenizer.from_pretrained(ner_model_path)
+ner_model = AutoModelForTokenClassification.from_pretrained(ner_model_path)
+ner_pipeline = pipeline("ner", model=ner_model, tokenizer=ner_tokenizer)
 
 # COCO class names
 COCO_INSTANCE_CATEGORY_NAMES = [
@@ -103,6 +110,10 @@ def analyze_image_content(image_bytes: bytes):
             label = COCO_INSTANCE_CATEGORY_NAMES[label_index]
             detected_objects.append(label)
     return detected_objects
+
+def analyze_text_with_ner(text: str):
+    ner_results = ner_pipeline(text)
+    return ner_results
 
 def shannon_entropy(data):
     """Calculate the Shannon entropy of a string."""
@@ -221,6 +232,17 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
             "risk_contribution": len(high_entropy_strings) * 30 # High weight for entropy-based findings
         }
         total_risk_score += len(high_entropy_strings) * 30
+
+    # NER-based entity detection
+    ner_entities = analyze_text_with_ner(content_str)
+    if ner_entities:
+        findings["named_entities"] = {
+            "count": len(ner_entities),
+            "matches": ner_entities,
+            "description": "Named entities detected.",
+            "risk_contribution": len(ner_entities) * 5
+        }
+        total_risk_score += len(ner_entities) * 5
 
     anomalies = []
     if len(content_str) > 100000:

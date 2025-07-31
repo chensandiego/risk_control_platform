@@ -111,29 +111,29 @@ Once the server is running (either locally or via Docker Compose), you can acces
 
 ## Advanced: Training a Custom NER Model
 
-The application includes a script to fine-tune a Transformer model (`distilbert-base-uncased`) to recognize custom types of sensitive data. This is a powerful upgrade from the default rule-based scanner.
+The application includes a script to fine-tune a Transformer model (`distilbert-base-uncased`) to recognize custom types of sensitive data, including people, organizations, and locations. This is a powerful upgrade from the default rule-based scanner.
 
 ### How It Works
 
-The `train_ner_model.py` script performs the following steps:
-1.  Loads a small, sample labeled dataset (you should replace this with your own data).
+The `train_ner_model_v2.py` script performs the following steps:
+1.  Loads a labeled dataset from `ner_data.jsonl`.
 2.  Loads the pre-trained `distilbert-base-uncased` model and tokenizer from Hugging Face.
 3.  Tokenizes the text and aligns the labels with the model's tokenizer.
 4.  Fine-tunes the model on your labeled data using the Hugging Face `Trainer` API.
-5.  Saves the resulting fine-tuned model and tokenizer to a local directory (`./ner_model/`).
+5.  Saves the resulting fine-tuned model and tokenizer to a local directory (`./ner_model_v2/`).
 
 ### How to Train the Model
 
-1.  **Prepare Your Data:** Open `train_ner_model.py` and replace the example `texts` and `labels` with your own labeled dataset. The more high-quality data you provide, the better the model will perform.
+1.  **Prepare Your Data:** Ensure your labeled dataset is in `ner_data.jsonl` in the format of `{"tokens": [...], "ner_tags": [...]}`. The more high-quality data you provide, the better the model will perform.
 
 2.  **Run the Training Script:** Execute the script from your terminal.
 
     ```bash
-    python train_ner_model.py
+    python train_ner_model_v2.py
     ```
     This process may take some time and is computationally intensive. Using a GPU is recommended for larger datasets.
 
-3.  **Integrate the Model:** After training is complete, your fine-tuned model will be saved in the `./ner_model/` directory. You can then modify `app/analysis.py` to load this model and use it for inference instead of the default regex-based functions.
+3.  **Integrate the Model:** After training is complete, your fine-tuned model will be saved in the `./ner_model_v2/` directory. The `app/analysis.py` script is already configured to load the model from this directory.
 
 ## Project Structure
 

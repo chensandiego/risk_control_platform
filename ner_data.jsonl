@@ -2,3 +2,24 @@
 {"tokens": ["Please", "contact", "Jane", "Smith", "at", "jane.smith@work.net"], "ner_tags": ["O", "O", "B-PII", "I-PII", "O", "B-PII"]}
 {"tokens": ["The", "user", "is", "anonymous"], "ner_tags": ["O", "O", "O", "O"]}
 {"tokens": ["Send", "the", "report", "to", "test.user@company.org"], "ner_tags": ["O", "O", "O", "O", "B-PII"]}
+{"tokens": ["Barack", "Obama", "was", "the", "president", "of", "the", "United", "States"], "ner_tags": ["B-PER", "I-PER", "O", "O", "O", "O", "O", "B-LOC", "I-LOC"]}
+{"tokens": ["Google", "is", "a", "company", "headquartered", "in", "Mountain", "View"], "ner_tags": ["B-ORG", "O", "O", "O", "O", "O", "B-LOC", "I-LOC"]}
+{"tokens": ["The", "meeting", "will", "be", "held", "at", "the", "Eiffel", "Tower", "in", "Paris"], "ner_tags": ["O", "O", "O", "O", "O", "O", "O", "B-LOC", "I-LOC", "O", "B-LOC"]}
+{"tokens": ["Satya", "Nadella", "is", "the", "CEO", "of", "Microsoft"], "ner_tags": ["B-PER", "I-PER", "O", "O", "O", "O", "B-ORG"]}
+{"tokens": ["The", "United", "Nations", "is", "located", "in", "New", "York", "City"], "ner_tags": ["B-ORG", "I-ORG", "O", "O", "O", "O", "B-LOC", "I-LOC", "I-LOC"]}
+{"tokens": ["I", "visited", "London", "last", "summer"], "ner_tags": ["O", "O", "B-LOC", "O", "O"]}
+{"tokens": ["Tim", "Cook", "leads", "Apple"], "ner_tags": ["B-PER", "I-PER", "O", "B-ORG"]}
+{"tokens": ["Amazon", "has", "offices", "in", "Seattle"], "ner_tags": ["B-ORG", "O", "O", "O", "B-LOC"]}
+{"tokens": ["The", "World", "Health", "Organization", "is", "based", "in", "Geneva"], "ner_tags": ["B-ORG", "I-ORG", "I-ORG", "I-ORG", "O", "O", "O", "B-LOC"]}
+{"tokens": ["Elon", "Musk", "founded", "SpaceX"], "ner_tags": ["B-PER", "I-PER", "O", "B-ORG"]}
+{"tokens": ["Mount", "Everest", "is", "the", "highest", "mountain", "in", "the", "world"], "ner_tags": ["B-LOC", "I-LOC", "O", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["The", "European", "Union", "is", "a", "political", "and", "economic", "union"], "ner_tags": ["B-ORG", "I-ORG", "I-ORG", "O", "O", "O", "O", "O", "O"]}
+{"tokens": ["Angela", "Merkel", "was", "the", "chancellor", "of", "Germany"], "ner_tags": ["B-PER", "I-PER", "O", "O", "O", "O", "B-LOC"]}
+{"tokens": ["The", "Great", "Wall", "of", "China", "is", "a", "historic", "fortification"], "ner_tags": ["B-LOC", "I-LOC", "I-LOC", "I-LOC", "I-LOC", "O", "O", "O", "O"]}
+{"tokens": ["Jeff", "Bezos", "started", "Amazon.com"], "ner_tags": ["B-PER", "I-PER", "O", "B-ORG"]}
+{"tokens": ["The", "Louvre", "Museum", "is", "in", "Paris", "France"], "ner_tags": ["B-ORG", "I-ORG", "I-ORG", "O", "O", "B-LOC", "B-LOC"]}
+{"tokens": ["The", "Amazon", "River", "flows", "through", "Brazil"], "ner_tags": ["B-LOC", "I-LOC", "I-LOC", "O", "O", "B-LOC"]}
+{"tokens": ["Donald", "Trump", "was", "a", "businessman", "and", "politician"], "ner_tags": ["B-PER", "I-PER", "O", "O", "O", "O", "O"]}
+{"tokens": ["The", "White", "House", "is", "in", "Washington", "D.C."], "ner_tags": ["B-ORG", "I-ORG", "I-ORG", "O", "O", "B-LOC", "I-LOC"]}
+{"tokens": ["Coca-Cola", "is", "a", "beverage", "company"], "ner_tags": ["B-ORG", "O", "O", "O", "O"]}
+{"tokens": ["The", "Statue", "of", "Liberty", "is", "in", "New", "York", "Harbor"], "ner_tags": ["B-LOC", "I-LOC", "I-LOC", "I-LOC", "O", "O", "B-LOC", "I-LOC", "I-LOC"]}

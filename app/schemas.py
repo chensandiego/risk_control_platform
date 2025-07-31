@@ -69,3 +69,7 @@ class GitLabScanRequest(BaseModel):
     project_id: int
     file_path: str
     ref: str = "main"
+
+class ReportRequest(BaseModel):
+    report_type: str  # "pdf" or "csv"
+    task_ids: List[str]
