@@ -17,25 +17,27 @@ services:
     build: .
     ports:
       - "8000:80"
+    working_dir: /app
     volumes:
       - .:/app
     environment:
       - REDIS_URL=redis://redis:6379/0
       - MONGO_DETAILS=mongodb://mongo:27017
-      - PYTHONPATH=.
+      - PYTHONPATH=/app
     depends_on:
       - redis
       - mongo
 
   celery-worker:
     build: .
+    working_dir: /app
     command: celery -A celery_app worker --loglevel=info
     volumes:
       - .:/app
     environment:
       - REDIS_URL=redis://redis:6379/0
       - MONGO_DETAILS=mongodb://mongo:27017
-      - PYTHONPATH=.
+      - PYTHONPATH=/app
     depends_on:
       - redis
       - fastapi-app

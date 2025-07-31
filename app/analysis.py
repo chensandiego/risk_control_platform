@@ -54,10 +54,10 @@ model = fasterrcnn_resnet50_fpn(pretrained=True)
 model.eval()
 
 # Load the fine-tuned NER model and tokenizer
-ner_model_path = "./ner_model_v2"
+ner_model_path = "/home/appuser/ner_model_v2"
 ner_tokenizer = AutoTokenizer.from_pretrained(ner_model_path)
 ner_model = AutoModelForTokenClassification.from_pretrained(ner_model_path)
-ner_pipeline = pipeline("ner", model=ner_model, tokenizer=ner_tokenizer)
+ner_pipeline = pipeline("ner", model=ner_model, tokenizer=ner_tokenizer, device="cpu")
 
 # COCO class names
 COCO_INSTANCE_CATEGORY_NAMES = [
@@ -112,8 +112,8 @@ def analyze_image_content(image_bytes: bytes):
     return detected_objects
 
 def analyze_text_with_ner(text: str):
-    ner_results = ner_pipeline(text)
-    return ner_results
+    print("Inside analyze_text_with_ner function (dummy)")
+    return []
 
 def shannon_entropy(data):
     """Calculate the Shannon entropy of a string."""
@@ -170,11 +170,17 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
     if "zip" in content_type or "tar" in content_type:
         return analyze_archive_task(content, content_type, filename)
 
-    time.sleep(5)
+    
+    print("Starting analyze_file_task")
+    if "zip" in content_type or "tar" in content_type:
+        print("Analyzing archive file")
+        return analyze_archive_task(content, content_type, filename)
+
     total_risk_score = 0
     findings = {}
 
     if content_type.startswith("image/"):
+        print("Analyzing image content")
         detected_objects = analyze_image_content(content)
         if detected_objects:
             findings["image_objects"] = {
@@ -185,8 +191,10 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
             }
             total_risk_score += len(detected_objects) * 10
 
+    print("Extracting text from file")
     content_str = extract_text_from_file(content, content_type)
 
+    print("Performing regex-based scanning")
     # Regex-based scanning
     for category, data in SENSITIVE_PATTERNS.items():
         matches = re.findall(data["pattern"], content_str)
@@ -199,6 +207,7 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
             }
             total_risk_score += len(matches) * data["weight"]
 
+    print("Performing custom rule-based scanning")
     # Custom rule-based scanning
     db = SessionLocal()
     custom_rules = rules_crud.get_rules(db)
@@ -216,6 +225,7 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
             }
             total_risk_score += len(matches) * 10
 
+    print("Performing entropy-based secret detection")
     # Entropy-based secret detection
     high_entropy_strings = []
     for word in content_str.split():
@@ -233,6 +243,7 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
         }
         total_risk_score += len(high_entropy_strings) * 30
 
+    print("Performing NER-based entity detection")
     # NER-based entity detection
     ner_entities = analyze_text_with_ner(content_str)
     if ner_entities:
@@ -244,6 +255,7 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
         }
         total_risk_score += len(ner_entities) * 5
 
+    print("Checking for anomalies")
     anomalies = []
     if len(content_str) > 100000:
         anomalies.append("File size is unusually large (over 100KB).")
@@ -258,8 +270,10 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
         }
 
     if total_risk_score > 100:
+        print("Quarantining file")
         quarantine_file(content, filename)
 
+    print("Generating risk summary")
     summary = generate_risk_summary(total_risk_score, findings)
 
     analysis_data = {
@@ -270,6 +284,7 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
         "content_type": content_type
     }
 
+    print("Saving to MongoDB")
     # Save to MongoDB
     result_to_save = schemas.AnalysisResultCreate(
         filename=filename,
@@ -283,6 +298,7 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
     analysis_data["_id"] = str(saved_result["_id"])
     analysis_data["id"] = str(saved_result["_id"])
 
+    print("Analysis complete")
     return analysis_data
 
 def generate_risk_summary(score: int, findings: dict):

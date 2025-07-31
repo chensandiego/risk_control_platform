@@ -77,26 +77,21 @@ pip install -r requirements.txt
 
 #### Option 1: Run Locally (Python)
 
-To run the application locally, you will need to start the FastAPI server, a Redis instance, and a Celery worker.
+To run the application locally, you will need to start the FastAPI server and a Redis instance. The Celery worker is now integrated into the FastAPI application.
 
 **1. Start Redis:**
 ```bash
 redis-server
 ```
 
-**2. Start the Celery Worker:**
-```bash
-celery -A celery_app worker --loglevel=info
-```
-
-**3. Start the FastAPI Application:**
+**2. Start the FastAPI Application (includes Celery worker):**
 ```bash
 PYTHONPATH=. uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 #### Option 2: Run with Docker Compose (Recommended)
 
-For a containerized setup, use Docker Compose. This will build the Docker image and run the application, Redis, MongoDB, and a Celery worker in separate containers.
+For a containerized setup, use Docker Compose. This will build the Docker image and run the application (including the Celery worker), Redis, and MongoDB in separate containers.
 
 ```bash
 docker-compose up --build

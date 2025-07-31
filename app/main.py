@@ -27,7 +27,13 @@ from .analysis import analyze_file_task, redact_file, quarantine_file
 from .connectors import s3, google_drive, dropbox, postgresql, mysql, github, gitlab
 from celery_app import celery_app
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 models.Base.metadata.create_all(bind=engine)
+logger.info("Database tables created or already exist.")
 
 app = FastAPI()
 

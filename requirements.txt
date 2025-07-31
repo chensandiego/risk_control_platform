@@ -24,6 +24,7 @@ optuna
 boto3
 google-api-python-client
 google-auth-httplib2
+google_auth_oauthlib
 dropbox
 psycopg2-binary
 mysql-connector-python
