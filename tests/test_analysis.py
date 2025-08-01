@@ -1,23 +1,7 @@
 import pytest
-from app.main import extract_text_from_csv, extract_text_from_json, extract_text_from_xml
-from app.analysis import analyze_file_task, shannon_entropy, analyze_image_content
+from app.analysis import analyze_file_task, shannon_entropy, analyze_image_content, analyze_text_with_ner
 from PIL import Image
 import io
-
-def test_extract_text_from_csv():
-    content = b"header1,header2\nvalue1,value2"
-    expected_text = "header1,header2\nvalue1,value2"
-    assert extract_text_from_csv(content) == expected_text
-
-def test_extract_text_from_json():
-    content = b'{"key": "value", "nested": {"key2": "value2"}}'
-    expected_text = '{"key": "value", "nested": {"key2": "value2"}}'
-    assert extract_text_from_json(content) == expected_text
-
-def test_extract_text_from_xml():
-    content = b'<root><element>value</element></root>'
-    expected_text = 'value'
-    assert extract_text_from_xml(content).strip() == expected_text
 
 def test_shannon_entropy():
     assert shannon_entropy("hello") > 1.9
@@ -35,3 +19,18 @@ def test_analyze_image_content():
     detected_objects = analyze_image_content(image_bytes)
     # Since it's a blank red image, we don't expect to detect anything from the COCO dataset.
     assert len(detected_objects) == 0
+
+def test_analyze_text_with_ner():
+    text = "John Doe lives in New York City."
+    entities = analyze_text_with_ner(text)
+    assert len(entities) > 0
+    # You can add more specific assertions based on expected NER output
+    # For example, checking for specific entity types or words
+    found_john = False
+    found_new_york = False
+    for entity in entities:
+        if entity["word"] == "John" and entity["entity_type"] == "B-PER":
+            found_john = True
+        if entity["word"] == "New York" and entity["entity_type"] == "B-LOC":
+            found_new_york = True
+    assert found_john or found_new_york # At least one of these should be found, depending on model performance

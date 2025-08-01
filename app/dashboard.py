@@ -2,17 +2,17 @@ from sqlalchemy.orm import Session
 from . import crud
 
 def get_dashboard_data(db: Session):
-    results = crud.get_analysis_results(db, limit=1000)  # Get the last 1000 results
+    results = crud.get_analysis_results(limit=1000)  # Get the last 1000 results
     
     total_files_analyzed = len(results)
-    high_risk_files = sum(1 for r in results if r.risk_score >= 150)
-    medium_risk_files = sum(1 for r in results if 50 <= r.risk_score < 150)
-    low_risk_files = sum(1 for r in results if r.risk_score < 50)
+    high_risk_files = sum(1 for r in results if r.get("risk_score", 0) >= 150)
+    medium_risk_files = sum(1 for r in results if 50 <= r.get("risk_score", 0) < 150)
+    low_risk_files = sum(1 for r in results if r.get("risk_score", 0) < 50)
 
     risk_by_type = {}
     for r in results:
-        if r.findings:
-            for finding_type in r.findings.keys():
+        if r.get("findings"):
+            for finding_type in r["findings"].keys():
                 risk_by_type[finding_type] = risk_by_type.get(finding_type, 0) + 1
 
     return {

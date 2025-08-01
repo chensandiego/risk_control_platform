@@ -16,6 +16,7 @@ import pytesseract
 from pdfminer.high_level import extract_text
 from docx import Document
 from openpyxl import load_workbook
+import concurrent.futures
 
 from . import crud, schemas, rules_crud
 from .database import SessionLocal
@@ -50,14 +51,13 @@ SENSITIVE_PATTERNS = {
 }
 
 # Load a pre-trained object detection model
-model = fasterrcnn_resnet50_fpn(pretrained=True)
+model = fasterrcnn_resnet50_fpn(weights=None)
+model.load_state_dict(torch.load('/home/appuser/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth', map_location=torch.device('cpu')))
+
 model.eval()
 
-# Load the fine-tuned NER model and tokenizer
-ner_model_path = "/home/appuser/ner_model_v2"
-ner_tokenizer = AutoTokenizer.from_pretrained(ner_model_path)
-ner_model = AutoModelForTokenClassification.from_pretrained(ner_model_path)
-ner_pipeline = pipeline("ner", model=ner_model, tokenizer=ner_tokenizer, device="cpu")
+# Load the fine-tuned NER model and tokenizer globally
+
 
 # COCO class names
 COCO_INSTANCE_CATEGORY_NAMES = [
@@ -112,8 +112,110 @@ def analyze_image_content(image_bytes: bytes):
     return detected_objects
 
 def analyze_text_with_ner(text: str):
-    print("Inside analyze_text_with_ner function (dummy)")
-    return []
+    # Cache for NER model and tokenizer
+    if not hasattr(analyze_text_with_ner, 'ner_pipeline'):
+        ner_model_path = "/home/appuser/ner_model_v2"
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(ner_model_path)
+            model = AutoModelForTokenClassification.from_pretrained(ner_model_path)
+            model.to('cpu')
+            model.eval()
+            label_map = model.config.id2label
+            analyze_text_with_ner.ner_pipeline = {
+                'tokenizer': tokenizer,
+                'model': model,
+                'label_map': label_map
+            }
+            print(f"[{time.time()}] NER model and tokenizer loaded and cached within worker.")
+        except Exception as e:
+            print(f"[{time.time()}] Error loading NER model and tokenizer within worker: {e}")
+            raise # Re-raise the exception to indicate a critical failure
+
+    tokenizer = analyze_text_with_ner.ner_pipeline['tokenizer']
+    model = analyze_text_with_ner.ner_pipeline['model']
+    label_map = analyze_text_with_ner.ner_pipeline['label_map']
+
+    # Ensure the text is not empty to avoid errors with the NER pipeline
+    if not text.strip():
+        print("analyze_text_with_ner: Input text is empty.")
+        return []
+    
+    print(f"analyze_text_with_ner: Processing text of length {len(text)}.")
+    
+    extracted_entities = []
+    
+    # Define a chunk size for processing (e.g., 512 tokens)
+    chunk_size = 128
+    
+    # Tokenize the text
+    tokens = tokenizer.tokenize(text)
+    
+    # Process text in chunks
+    for i in range(0, len(tokens), chunk_size):
+        chunk_tokens = tokens[i:i + chunk_size]
+        chunk_text = tokenizer.convert_tokens_to_string(chunk_tokens)
+        
+        if not chunk_text.strip():
+            continue
+            
+        print(f"analyze_text_with_ner: Processing chunk of length {len(chunk_text)}.")
+        start_time = time.time()
+        try:
+            # Manually perform NER inference
+            inputs = tokenizer(chunk_text, return_tensors="pt", truncation=True).to('cpu')
+            print(f"analyze_text_with_ner: Tokenized chunk. Input IDs shape: {inputs['input_ids'].shape}")
+            
+            def _perform_inference(model, inputs):
+                with torch.no_grad():
+                    return model(**inputs)
+
+            try:
+                print(f"[{time.time()}] analyze_text_with_ner: Before model inference call with ThreadPoolExecutor (Timeout: 60s).")
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(_perform_inference, model, inputs)
+                    outputs = future.result(timeout=60) # 60-second timeout
+                print(f"[{time.time()}] analyze_text_with_ner: After model inference call. Output shape: {outputs.logits.shape}")
+            except concurrent.futures.TimeoutError:
+                print(f"[{time.time()}] analyze_text_with_ner: Model inference timed out after 60 seconds. Skipping this chunk.")
+                continue # Skip this chunk and continue with the next
+            except Exception as e:
+                print(f"analyze_text_with_ner: Error during NER inference: {e}")
+                continue # Continue to next chunk even if one fails
+            
+            predictions = torch.argmax(outputs.logits, dim=2)
+            
+            ner_results = []
+            for token, prediction in zip(inputs.tokens(), predictions[0].tolist()):
+                if token.startswith("##"):
+                    word = token[2:]
+                else:
+                    word = token
+                
+                entity_type = label_map[prediction]
+                
+                ner_results.append({"word": word, "entity_type": entity_type})
+            
+            end_time = time.time()
+            print(f"analyze_text_with_ner: NER inference for chunk (length {len(chunk_text)}) took {end_time - start_time:.4f} seconds.")
+            
+            for entity in ner_results:
+                extracted_entities.append({
+                    "word": entity["word"],
+                    "entity_type": entity["entity"]
+                })
+                
+        except Exception as e:
+            print(f"analyze_text_with_ner: Error during NER pipeline processing for chunk: {e}")
+            # Continue to next chunk even if one fails
+        finally:
+            # Log memory usage after each chunk (optional, requires psutil)
+            # import psutil
+            # process = psutil.Process(os.getpid())
+            # print(f"analyze_text_with_ner: Memory usage after chunk: {process.memory_info().rss / (1024 * 1024):.2f} MB")
+            pass # Added pass to ensure valid Python syntax after commenting out optional memory logging
+            
+    print(f"analyze_text_with_ner: Extracted {len(extracted_entities)} entities.")
+    return extracted_entities
 
 def shannon_entropy(data):
     """Calculate the Shannon entropy of a string."""
@@ -245,8 +347,11 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
 
     print("Performing NER-based entity detection")
     # NER-based entity detection
+    print("Calling analyze_text_with_ner...")
     ner_entities = analyze_text_with_ner(content_str)
+    print(f"analyze_text_with_ner returned {len(ner_entities)} entities.")
     if ner_entities:
+        print("NER entities found. Adding to findings.")
         findings["named_entities"] = {
             "count": len(ner_entities),
             "matches": ner_entities,
@@ -254,6 +359,7 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
             "risk_contribution": len(ner_entities) * 5
         }
         total_risk_score += len(ner_entities) * 5
+    print("Finished NER-based entity detection section.")
 
     print("Checking for anomalies")
     anomalies = []

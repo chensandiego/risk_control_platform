@@ -14,6 +14,7 @@ This project is a file analysis service built with Python (FastAPI) and SQLAlche
 -   **Analysis Dashboard:** Provides a visual overview of analysis results, including total files analyzed, risk distribution, and risk by type.
 -   **Machine Learning Ready:** Includes a script (`train_ner_model.py`) to fine-tune a `distilbert-base-uncased` model for Named Entity Recognition (NER) to detect custom sensitive data types.
 -   **Image Content Analysis:** Extends beyond OCR to use computer vision models to detect sensitive objects in images, such as credit cards or ID cards.
+-   **Improved NER Performance:** Optimized Named Entity Recognition (NER) model inference to prevent hangs and improve stability within the Celery worker, especially for long-running tasks.
 -   **Database Integration:** Analysis results are stored in a MongoDB database, providing a scalable and flexible NoSQL solution. Custom rules are stored in a SQLite database using SQLAlchemy.
 -   **Modern UI:** The user interface is built with Bootstrap and uses asynchronous JavaScript to poll for results.
 -   **Automated Data Source Scanning:** Connect to and scan data from various sources, including:
@@ -177,3 +178,8 @@ risk_control_platform/
 -   `POST /rules/import/`: Import a list of rules.
 -   `GET /rules/export/`: Export all custom rules.
 -   `GET /dashboard/`: Get data for the analysis dashboard.
+
+## Known Issues and Future Improvements
+
+-   **NER Model Performance with Large Inputs:** While the NER model hang issue has been mitigated with a timeout, very large text inputs can still lead to timeouts or significant processing delays. Further optimization of the NER pipeline for handling extremely long documents, potentially through more advanced chunking strategies or model quantization, is a future improvement.
+-   **Resource Management for ML Models:** The current solution explicitly moves the NER model to CPU. For deployments with GPU resources, optimizing the Docker setup and model loading to leverage GPUs for faster inference would be beneficial.
