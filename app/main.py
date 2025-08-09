@@ -249,8 +249,8 @@ def delete_rule(rule_id: int, db: Session = Depends(get_db)):
     return db_rule
 
 @app.get("/dashboard/")
-def get_dashboard_data(db: Session = Depends(get_db)):
-    return dashboard.get_dashboard_data(db)
+def get_dashboard_data_endpoint():
+    return dashboard.get_dashboard_data()
 
 @app.post("/scan-docker-compose/", response_model=schemas.TrivyScanResult)
 async def scan_docker_compose(scan_request: schemas.DockerComposeScanRequest):

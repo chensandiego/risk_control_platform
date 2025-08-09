@@ -37,3 +37,22 @@ def create_analysis_result(result: schemas.AnalysisResultCreate) -> Dict[str, An
         new_result["id"] = str(new_result["_id"])
         return new_result
     return {}
+
+def get_all_analysis_results() -> List[Dict[str, Any]]:
+    """Fetches all analysis results from the database."""
+    results = []
+    for result in analysis_results_collection.find({}):
+        result["id"] = str(result["_id"])
+        results.append(result)
+    return results
+
+def get_recent_high_risk_files(limit: int = 5) -> List[Dict[str, Any]]:
+    """Fetches the most recent high-risk files."""
+    results = []
+    query = {"risk_level": "High"}
+    # Sort by timestamp descending (-1)
+    cursor = analysis_results_collection.find(query).sort("timestamp", -1).limit(limit)
+    for result in cursor:
+        result["id"] = str(result["_id"])
+        results.append(result)
+    return results

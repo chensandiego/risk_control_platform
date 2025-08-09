@@ -4,233 +4,204 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Analysis Service</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background-color: #f8f9fa; }
-        .container { max-width: 900px; margin-top: 50px; }
-        .card { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        #results-card { display: none; }
-        .spinner-border { display: none; }
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 1200px;
+        }
+        .card {
+            margin-bottom: 1.5rem;
+        }
+        #result {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: #e9ecef;
+            padding: 1rem;
+            border-radius: 0.25rem;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="card mb-4">
-            <div class="card-body">
-                <h1 class="card-title text-center mb-4">File Analysis Service</h1>
-                
-                <h2 class="mb-3">Upload File for Analysis</h2>
-                <form id="upload-form" class="mb-4">
-                    <div class="mb-3">
-                        <label for="file-input" class="form-label">Select a file</label>
-                        <input class="form-control" type="file" id="file-input" required>
-                    </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">Analyze File</button>
-                    </div>
-                </form>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">File Analysis and Remediation Service</h1>
 
-                <hr class="my-4">
-
-                <h2 class="mb-3">Analyze Text Directly</h2>
-                <div class="mb-3">
-                    <label for="text-input" class="form-label">Paste text here</label>
-                    <textarea class="form-control" id="text-input" rows="8"></textarea>
-                </div>
-                <div class="d-grid">
-                    <button type="button" class="btn btn-success" id="analyze-text-btn">Analyze Text</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="card mt-4" id="dashboard-card">
-            <div class="card-body">
-                <h2 class="card-title">Analysis Dashboard</h2>
-                <div class="row text-center">
-                    <div class="col-md-3">
-                        <div class="p-3 border bg-light">
-                            <h5>Total Files Analyzed</h5>
-                            <p id="total-files" class="fs-3">0</p>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="p-3 border bg-light">
-                            <h5>High Risk</h5>
-                            <p id="high-risk-files" class="fs-3 text-danger">0</p>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="p-3 border bg-light">
-                            <h5>Medium Risk</h5>
-                            <p id="medium-risk-files" class="fs-3 text-warning">0</p>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="p-3 border bg-light">
-                            <h5>Low Risk</h5>
-                            <p id="low-risk-files" class="fs-3 text-success">0</p>
-                        </div>
-                    </div>
-                </div>
-                <h3 class="mt-4">Risk by Type</h3>
-                <ul id="risk-by-type-list" class="list-group"></ul>
-            </div>
-        </div>
-
-        <div class="card mt-4" id="rules-card">
-            <div class="card-body">
-                <h2 class="card-title">Custom Analysis Rules</h2>
-                
-                <ul class="nav nav-tabs mb-3" id="rulesTab" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage" type="button" role="tab" aria-controls="manage" aria-selected="true">Manage Rules</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="test-tab" data-bs-toggle="tab" data-bs-target="#test" type="button" role="tab" aria-controls="test" aria-selected="false">Test Rule</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="import-export-tab" data-bs-toggle="tab" data-bs-target="#import-export" type="button" role="tab" aria-controls="import-export" aria-selected="false">Import/Export</button>
-                    </li>
-                </ul>
-                <div class="tab-content" id="rulesTabContent">
-                    <div class="tab-pane fade show active" id="manage" role="tabpanel" aria-labelledby="manage-tab">
-                        <form id="rule-form" class="mb-4">
-                            <input type="hidden" id="rule-id">
+        <!-- File Upload and Text Analysis Section -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Analyze a File</h5>
+                        <form id="upload-form">
                             <div class="mb-3">
-                                <label for="rule-name" class="form-label">Rule Name</label>
-                                <input type="text" class="form-control" id="rule-name" required>
+                                <input class="form-control" type="file" name="file" required>
                             </div>
-                            <div class="mb-3">
-                                <label for="rule-pattern" class="form-label">RegEx Pattern</label>
-                                <input type="text" class="form-control" id="rule-pattern" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="rule-description" class="form-label">Description</label>
-                                <input type="text" class="form-control" id="rule-description">
-                            </div>
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-info">Save Rule</button>
-                            </div>
+                            <button type="submit" class="btn btn-primary">Analyze</button>
                         </form>
-                        <h3 class="mt-4">Existing Rules</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Analyze Text</h5>
+                        <form id="text-form">
+                            <div class="mb-3">
+                                <textarea class="form-control" name="text" rows="4" placeholder="Paste text here for analysis..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Analyze</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Result Section -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Analysis Result</h5>
+                <div id="result-container" style="display:none;">
+                    <pre id="result"></pre>
+                    <div id="remediation-buttons" class="mt-3"></div>
+                </div>
+                <div id="loading" style="display:none;">
+                    <p>Analyzing... please wait.</p>
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Dashboard</h5>
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6>Total Files Analyzed</h6>
+                        <p id="total-files" class="fs-4">0</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Risk Distribution</h6>
+                        <canvas id="risk-distribution-chart"></canvas>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Findings by Type</h6>
+                        <canvas id="risk-by-type-chart"></canvas>
+                    </div>
+                </div>
+                <!-- New Row for Time Series and High-Risk Table -->
+                <div class="row mt-4">
+                    <div class="col-md-8">
+                        <h6>Files Analyzed Over Time (Last 14 Days)</h6>
+                        <canvas id="time-series-chart"></canvas>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Recent High-Risk Files</h6>
                         <table class="table table-striped">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Pattern</th>
-                                    <th>Description</th>
-                                    <th>Version</th>
-                                    <th>Created At</th>
-                                    <th>Actions</th>
+                                    <th>Filename</th>
+                                    <th>Timestamp</th>
                                 </tr>
                             </thead>
-                            <tbody id="rules-table-body"></tbody>
+                            <tbody id="high-risk-files-table">
+                                <!-- Rows will be inserted here -->
+                            </tbody>
                         </table>
                     </div>
-                    <div class="tab-pane fade" id="test" role="tabpanel" aria-labelledby="test-tab">
-                        <div class="mb-3">
-                            <label for="test-pattern" class="form-label">Pattern to Test</label>
-                            <input type="text" class="form-control" id="test-pattern" placeholder="Enter regex pattern">
-                        </div>
-                        <div class="mb-3">
-                            <label for="test-text" class="form-label">Text to Test Against</label>
-                            <textarea class="form-control" id="test-text" rows="5" placeholder="Enter text to test the pattern against"></textarea>
-                        </div>
-                        <button type="button" class="btn btn-primary" id="test-rule-btn">Test Rule</button>
-                        <div class="mt-3" id="test-results"></div>
-                    </div>
-                    <div class="tab-pane fade" id="import-export" role="tabpanel" aria-labelledby="import-export-tab">
-                        <h4 class="mt-3">Export Rules</h4>
-                        <button type="button" class="btn btn-secondary mb-3" id="export-rules-btn">Export All Rules</button>
-                        <pre id="exported-rules-output" class="bg-light p-3 rounded" style="display:none;"></pre>
-
-                        <h4 class="mt-3">Import Rules</h4>
-                        <div class="mb-3">
-                            <label for="import-rules-json" class="form-label">Paste Rules JSON</label>
-                            <textarea class="form-control" id="import-rules-json" rows="8" placeholder="Paste JSON array of rules here"></textarea>
-                        </div>
-                        <button type="button" class="btn btn-success" id="import-rules-btn">Import Rules</button>
-                        <div class="mt-3" id="import-status"></div>
-                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="card mt-4" id="results-card">
-            <div class="card-body">
-                <h2 class="card-title">Analysis Results</h2>
-                <div class="spinner-border text-primary" role="status" id="loading-spinner">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <div id="results-content"></div>
-            </div>
-        </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const uploadForm = document.getElementById('upload-form');
-        const fileInput = document.getElementById('file-input');
-        const textInput = document.getElementById('text-input');
-        const analyzeTextBtn = document.getElementById('analyze-text-btn');
-        const resultsCard = document.getElementById('results-card');
-        const resultsContent = document.getElementById('results-content');
-        const loadingSpinner = document.getElementById('loading-spinner');
+        document.getElementById('upload-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const resultContainer = document.getElementById('result-container');
+            const resultDiv = document.getElementById('result');
+            const loadingDiv = document.getElementById('loading');
+            const remediationButtons = document.getElementById('remediation-buttons');
+
+            resultContainer.style.display = 'none';
+            loadingDiv.style.display = 'block';
+            remediationButtons.innerHTML = '';
+
+            const response = await fetch('/uploadfile/', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            const taskId = data.task_id;
+
+            pollForResult(taskId);
+        });
+
+        document.getElementById('text-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const text = this.querySelector('textarea').value;
+            const resultContainer = document.getElementById('result-container');
+            const resultDiv = document.getElementById('result');
+            const loadingDiv = document.getElementById('loading');
+            const remediationButtons = document.getElementById('remediation-buttons');
+
+            resultContainer.style.display = 'none';
+            loadingDiv.style.display = 'block';
+            remediationButtons.innerHTML = '';
+
+            const response = await fetch('/analyze-text/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            });
+            const data = await response.json();
+            const taskId = data.task_id;
+
+            pollForResult(taskId);
+        });
 
         function pollForResult(taskId) {
-            resultsCard.style.display = 'block';
-            loadingSpinner.style.display = 'block';
-            resultsContent.innerHTML = '';
-
             const interval = setInterval(async () => {
-                try {
-                    const response = await fetch(`/results/${taskId}`);
-                    const data = await response.json();
+                const response = await fetch(`/results/${taskId}`);
+                const data = await response.json();
 
-                    if (data.status === 'SUCCESS') {
-                        clearInterval(interval);
-                        loadingSpinner.style.display = 'none';
-                        displayResults(data.result, taskId);
-                    } else if (data.status === 'FAILURE') {
-                        clearInterval(interval);
-                        loadingSpinner.style.display = 'none';
-                        resultsContent.innerHTML = `<div class="alert alert-danger">Analysis failed: ${data.error}</div>`;
-                    }
-                    // If PENDING, do nothing and wait for the next poll
-                } catch (error) {
+                if (data.status === 'SUCCESS') {
                     clearInterval(interval);
-                    loadingSpinner.style.display = 'none';
-                    resultsContent.innerHTML = `<div class="alert alert-danger">Error fetching results: ${error.message}</div>`;
-                }
-            }, 2000); // Poll every 2 seconds
-        }
+                    const resultContainer = document.getElementById('result-container');
+                    const resultDiv = document.getElementById('result');
+                    const loadingDiv = document.getElementById('loading');
+                    const remediationButtons = document.getElementById('remediation-buttons');
 
-        function displayResults(data, taskId) {
-            const findingsHtml = data.detailed_findings ? `<pre class="bg-light p-2 rounded">${JSON.stringify(data.detailed_findings, null, 2)}</pre>` : '<p>No findings.</p>';
-            let remediationHtml = '';
-            if (data.overall_risk_score > 0) {
-                remediationHtml = `
-                    <div class="mt-3">
-                        <button class="btn btn-warning me-2" onclick="remediate('${taskId}', 'redact')">Redact File</button>
-                        <button class="btn btn-danger" onclick="remediate('${taskId}', 'quarantine')">Quarantine File</button>
-                    </div>
-                `;
-            }
-            resultsContent.innerHTML = `
-                <p><strong>Overall Risk Score:</strong> <span class="badge bg-danger">${data.overall_risk_score}</span></p>
-                <p><strong>Summary:</strong></p>
-                <p>${data.summary.replace(/\n/g, '<br>')}</p>
-                <p><strong>Detailed Findings:</strong></p>
-                ${findingsHtml}
-                ${remediationHtml}
-            `;
+                    resultDiv.textContent = JSON.stringify(data.result, null, 2);
+                    loadingDiv.style.display = 'none';
+                    resultContainer.style.display = 'block';
+
+                    // Add remediation buttons
+                    remediationButtons.innerHTML = `
+                        <button class="btn btn-warning" onclick="remediate('${taskId}', 'redact')">Redact</button>
+                        <button class="btn btn-danger" onclick="remediate('${taskId}', 'quarantine')">Quarantine</button>
+                    `;
+                    
+                    // Refresh dashboard data after analysis
+                    fetchDashboardData();
+                } else if (data.status === 'FAILURE') {
+                    clearInterval(interval);
+                    const loadingDiv = document.getElementById('loading');
+                    loadingDiv.innerHTML = `<p class="text-danger">Analysis failed: ${data.error}</p>`;
+                }
+            }, 2000);
         }
 
         async function remediate(taskId, action) {
             const response = await fetch(`/remediate/${taskId}?action=${action}`, {
                 method: 'POST'
             });
-
             if (action === 'redact') {
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
@@ -242,232 +213,100 @@
                 a.click();
                 window.URL.revokeObjectURL(url);
             } else {
-                const result = await response.json();
-                alert(result.message);
+                const data = await response.json();
+                alert(data.message);
             }
         }
-
-        const ruleForm = document.getElementById('rule-form');
-        const ruleIdInput = document.getElementById('rule-id');
-        const ruleNameInput = document.getElementById('rule-name');
-        const rulePatternInput = document.getElementById('rule-pattern');
-        const ruleDescriptionInput = document.getElementById('rule-description');
-        const rulesTableBody = document.getElementById('rules-table-body');
-        const totalFiles = document.getElementById('total-files');
-        const highRiskFiles = document.getElementById('high-risk-files');
-        const mediumRiskFiles = document.getElementById('medium-risk-files');
-        const lowRiskFiles = document.getElementById('low-risk-files');
-        const riskByTypeList = document.getElementById('risk-by-type-list');
-
-        // New elements for rule testing
-        const testPatternInput = document.getElementById('test-pattern');
-        const testTextInput = document.getElementById('test-text');
-        const testRuleBtn = document.getElementById('test-rule-btn');
-        const testResultsDiv = document.getElementById('test-results');
-
-        // New elements for import/export
-        const exportRulesBtn = document.getElementById('export-rules-btn');
-        const exportedRulesOutput = document.getElementById('exported-rules-output');
-        const importRulesJsonInput = document.getElementById('import-rules-json');
-        const importRulesBtn = document.getElementById('import-rules-btn');
-        const importStatusDiv = document.getElementById('import-status');
-
 
         async function fetchDashboardData() {
             const response = await fetch('/dashboard/');
             const data = await response.json();
 
-            totalFiles.textContent = data.total_files_analyzed;
-            highRiskFiles.textContent = data.high_risk_files;
-            mediumRiskFiles.textContent = data.medium_risk_files;
-            lowRiskFiles.textContent = data.low_risk_files;
+            // Update Total Files Analyzed
+            document.getElementById('total-files').textContent = data.total_files_analyzed;
 
-            riskByTypeList.innerHTML = '';
-            for (const type in data.risk_by_type) {
-                const listItem = document.createElement('li');
-                listItem.className = 'list-group-item';
-                listItem.textContent = `${type}: ${data.risk_by_type[type]}`;
-                riskByTypeList.appendChild(listItem);
+            // Update Risk Distribution Chart
+            const riskDistributionCtx = document.getElementById('risk-distribution-chart').getContext('2d');
+            if (window.riskDistributionChart) {
+                window.riskDistributionChart.destroy();
             }
-        }
-
-        async function fetchRules() {
-            const response = await fetch('/rules/');
-            const rules = await response.json();
-            rulesTableBody.innerHTML = '';
-            rules.forEach(rule => {
-                const row = document.createElement('tr');
-                const createdAt = new Date(rule.created_at).toLocaleString();
-                row.innerHTML = `
-                    <td>${rule.name}</td>
-                    <td><code>${rule.pattern}</code></td>
-                    <td>${rule.description || ''}</td>
-                    <td>${rule.version}</td>
-                    <td>${createdAt}</td>
-                    <td>
-                        <button class="btn btn-sm btn-warning" onclick="editRule(${rule.id}, '${rule.name}', '${rule.pattern}', '${rule.description || ''}')">Edit</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteRule(${rule.id})">Delete</button>
-                    </td>
-                `;
-                rulesTableBody.appendChild(row);
-            });
-        }
-
-        async function saveRule(e) {
-            e.preventDefault();
-            const ruleId = ruleIdInput.value;
-            const rule = {
-                name: ruleNameInput.value,
-                pattern: rulePatternInput.value,
-                description: ruleDescriptionInput.value
-            };
-
-            const url = ruleId ? `/rules/${ruleId}` : '/rules/';
-            const method = ruleId ? 'PUT' : 'POST';
-
-            const response = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(rule)
-            });
-
-            if (response.ok) {
-                ruleForm.reset();
-                ruleIdInput.value = '';
-                fetchRules();
-            } else {
-                const errorData = await response.json();
-                alert(`Error saving rule: ${errorData.detail}`);
-            }
-        }
-
-        function editRule(id, name, pattern, description) {
-            ruleIdInput.value = id;
-            ruleNameInput.value = name;
-            rulePatternInput.value = pattern;
-            ruleDescriptionInput.value = description;
-        }
-
-        async function deleteRule(id) {
-            if (confirm('Are you sure you want to delete this rule?')) {
-                const response = await fetch(`/rules/${id}`, { method: 'DELETE' });
-                if (response.ok) {
-                    fetchRules();
-                } else {
-                    const errorData = await response.json();
-                    alert(`Error deleting rule: ${errorData.detail}`);
+            window.riskDistributionChart = new Chart(riskDistributionCtx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(data.risk_distribution),
+                    datasets: [{
+                        data: Object.values(data.risk_distribution),
+                        backgroundColor: ['#dc3545', '#ffc107', '#0d6efd', '#6c757d'],
+                    }]
                 }
+            });
+
+            // Update Findings by Type Chart
+            const riskByTypeCtx = document.getElementById('risk-by-type-chart').getContext('2d');
+            if (window.riskByTypeChart) {
+                window.riskByTypeChart.destroy();
             }
-        }
-
-        async function testRule() {
-            const pattern = testPatternInput.value;
-            const text = testTextInput.value;
-
-            if (!pattern || !text) {
-                testResultsDiv.innerHTML = '<div class="alert alert-warning">Please enter both a pattern and text to test.</div>';
-                return;
-            }
-
-            try {
-                const response = await fetch('/rules/test/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ pattern, text })
-                });
-                const data = await response.json();
-
-                if (response.ok) {
-                    if (data.matches && data.matches.length > 0) {
-                        testResultsDiv.innerHTML = `<div class="alert alert-success">Found ${data.matches.length} match(es): <pre>${JSON.stringify(data.matches, null, 2)}</pre></div>`;
-                    } else {
-                        testResultsDiv.innerHTML = '<div class="alert alert-info">No matches found.</div>';
+            window.riskByTypeChart = new Chart(riskByTypeCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(data.findings_by_type),
+                    datasets: [{
+                        label: 'Count',
+                        data: Object.values(data.findings_by_type),
+                        backgroundColor: '#0d6efd',
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
                     }
-                } else {
-                    testResultsDiv.innerHTML = `<div class="alert alert-danger">Error testing rule: ${data.detail}</div>`;
                 }
-            } catch (error) {
-                testResultsDiv.innerHTML = `<div class="alert alert-danger">An unexpected error occurred: ${error.message}</div>`;
-            }
-        }
-
-        async function exportRules() {
-            try {
-                const response = await fetch('/rules/export/');
-                const rules = await response.json();
-                exportedRulesOutput.textContent = JSON.stringify(rules, null, 2);
-                exportedRulesOutput.style.display = 'block';
-            } catch (error) {
-                exportedRulesOutput.textContent = `Error exporting rules: ${error.message}`;
-                exportedRulesOutput.style.display = 'block';
-                exportedRulesOutput.className = 'bg-danger text-white p-3 rounded';
-            }
-        }
-
-        async function importRules() {
-            const jsonString = importRulesJsonInput.value;
-            if (!jsonString) {
-                importStatusDiv.innerHTML = '<div class="alert alert-warning">Please paste JSON data to import.</div>';
-                return;
-            }
-
-            try {
-                const rulesToImport = JSON.parse(jsonString);
-                if (!Array.isArray(rulesToImport)) {
-                    importStatusDiv.innerHTML = '<div class="alert alert-danger">Invalid JSON format. Expected a JSON array of rules.</div>';
-                    return;
-                }
-
-                const response = await fetch('/rules/import/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rules: rulesToImport })
-                });
-                const data = await response.json();
-
-                if (response.ok) {
-                    importStatusDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-                    importRulesJsonInput.value = '';
-                    fetchRules(); // Refresh the rules list
-                } else {
-                    importStatusDiv.innerHTML = `<div class="alert alert-danger">Error importing rules: ${data.detail}</div>`;
-                }
-            } catch (error) {
-                importStatusDiv.innerHTML = `<div class="alert alert-danger">Invalid JSON format: ${error.message}</div>`;
-            }
-        }
-
-
-        ruleForm.addEventListener('submit', saveRule);
-        testRuleBtn.addEventListener('click', testRule);
-        exportRulesBtn.addEventListener('click', exportRules);
-        importRulesBtn.addEventListener('click', importRules);
-
-        fetchRules();
-        fetchDashboardData();
-
-        uploadForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-
-            const response = await fetch('/uploadfile/', { method: 'POST', body: formData });
-            const data = await response.json();
-            pollForResult(data.task_id);
-        });
-
-        analyzeTextBtn.addEventListener('click', async () => {
-            const text = textInput.value;
-            if (!text.trim()) return alert('Please enter text.');
-
-            const response = await fetch('/analyze-text/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text })
             });
-            const data = await response.json();
-            pollForResult(data.task_id);
-        });
+
+            // --- New: Render Time Series Chart ---
+            const timeSeriesCtx = document.getElementById('time-series-chart').getContext('2d');
+            if (window.timeSeriesChart) {
+                window.timeSeriesChart.destroy();
+            }
+            window.timeSeriesChart = new Chart(timeSeriesCtx, {
+                type: 'line',
+                data: {
+                    labels: data.time_series.labels,
+                    datasets: [{
+                        label: 'Files Analyzed',
+                        data: data.time_series.data,
+                        borderColor: '#0d6efd',
+                        tension: 0.1,
+                        fill: false
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // --- New: Populate Recent High-Risk Files Table ---
+            const highRiskTableBody = document.getElementById('high-risk-files-table');
+            highRiskTableBody.innerHTML = ''; // Clear existing rows
+            data.recent_high_risk_files.forEach(file => {
+                const row = document.createElement('tr');
+                const formattedTimestamp = new Date(file.timestamp).toLocaleString();
+                row.innerHTML = `
+                    <td>${file.filename}</td>
+                    <td>${formattedTimestamp}</td>
+                `;
+                highRiskTableBody.appendChild(row);
+            });
+        }
+
+        // Initial load of dashboard data
+        document.addEventListener('DOMContentLoaded', fetchDashboardData);
     </script>
 </body>
 </html>

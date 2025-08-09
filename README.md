@@ -12,6 +12,7 @@ This project is a file analysis service built with Python (FastAPI) and SQLAlche
 -   **Advanced Rule Management UI:** A sophisticated web interface for managing custom analysis rules, including features for rule testing, versioning, and import/export capabilities.
 -   **Customizable Analysis Rules:** Users can define and manage their own regex-based rules for sensitive data detection through the web interface.
 -   **Analysis Dashboard:** Provides a visual overview of analysis results, including total files analyzed, risk distribution, and risk by type.
+-   **Enhanced Analysis Dashboard:** Provides a more detailed visual overview of analysis results, including a time-series chart of files analyzed over the last 14 days, a table of recent high-risk files, and charts for risk distribution and findings by type.
 -   **Machine Learning Ready:** Includes a script (`train_ner_model.py`) to fine-tune a `distilbert-base-uncased` model for Named Entity Recognition (NER) to detect custom sensitive data types.
 -   **Image Content Analysis:** Extends beyond OCR to use computer vision models to detect sensitive objects in images, such as credit cards or ID cards.
 -   **Improved NER Performance:** Optimized Named Entity Recognition (NER) model inference to prevent hangs and improve stability within the Celery worker, especially for long-running tasks.

@@ -1,24 +1,58 @@
-from sqlalchemy.orm import Session
+from collections import Counter
+from datetime import datetime, timedelta
 from . import crud
 
-def get_dashboard_data(db: Session):
-    results = crud.get_analysis_results(limit=1000)  # Get the last 1000 results
+def get_dashboard_data():
+    """Gathers and processes data for the dashboard."""
+    results = crud.get_all_analysis_results()
     
+    # --- Existing Metrics ---
     total_files_analyzed = len(results)
-    high_risk_files = sum(1 for r in results if r.get("risk_score", 0) >= 150)
-    medium_risk_files = sum(1 for r in results if 50 <= r.get("risk_score", 0) < 150)
-    low_risk_files = sum(1 for r in results if r.get("risk_score", 0) < 50)
-
-    risk_by_type = {}
+    
+    risk_distribution = Counter(r.get("risk_level", "Unknown") for r in results)
+    
+    findings_by_type = Counter()
     for r in results:
         if r.get("findings"):
-            for finding_type in r["findings"].keys():
-                risk_by_type[finding_type] = risk_by_type.get(finding_type, 0) + 1
+            for finding in r["findings"]:
+                findings_by_type[finding["type"]] += 1
+
+    # --- New: Files Analyzed Over Time (Last 14 Days) ---
+    analysis_by_day = Counter()
+    fourteen_days_ago = datetime.now() - timedelta(days=14)
+    for r in results:
+        # Ensure timestamp is a datetime object
+        timestamp_str = r.get("timestamp")
+        if isinstance(timestamp_str, str):
+            try:
+                timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+                if timestamp > fourteen_days_ago:
+                    day = timestamp.strftime("%Y-%m-%d")
+                    analysis_by_day[day] += 1
+            except ValueError:
+                continue # Skip if the timestamp format is incorrect
+
+    # Sort by date and format for the chart
+    sorted_analysis_by_day = sorted(analysis_by_day.items())
+    time_series_labels = [date for date, count in sorted_analysis_by_day]
+    time_series_data = [count for date, count in sorted_analysis_by_day]
+
+    # --- New: Recent High-Risk Files ---
+    recent_high_risk_files = crud.get_recent_high_risk_files(limit=5)
 
     return {
         "total_files_analyzed": total_files_analyzed,
-        "high_risk_files": high_risk_files,
-        "medium_risk_files": medium_risk_files,
-        "low_risk_files": low_risk_files,
-        "risk_by_type": risk_by_type
+        "risk_distribution": dict(risk_distribution),
+        "findings_by_type": dict(findings_by_type),
+        "time_series": {
+            "labels": time_series_labels,
+            "data": time_series_data
+        },
+        "recent_high_risk_files": [
+            {
+                "filename": r.get("filename", "N/A"),
+                "timestamp": r.get("timestamp", "N/A")
+            }
+            for r in recent_high_risk_files
+        ]
     }
