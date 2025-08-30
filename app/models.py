@@ -27,6 +27,8 @@ class AnalysisResult(BaseModel):
     content_type: str
     risk_score: int
     findings: Dict[str, Any]
+    predicted_risk_level: Optional[int] = None
+    is_anomaly: Optional[bool] = False
 
     class Config:
         allow_population_by_field_name = True

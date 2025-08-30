@@ -17,6 +17,8 @@ from pdfminer.high_level import extract_text
 from docx import Document
 from openpyxl import load_workbook
 import concurrent.futures
+import joblib
+import pandas as pd
 
 from . import crud, schemas, rules_crud
 from .database import SessionLocal
@@ -49,6 +51,16 @@ SENSITIVE_PATTERNS = {
         "description": "Potential private cryptographic keys found."
     }
 }
+
+# --- Load ML Models ---
+try:
+    risk_classifier = joblib.load("risk_classifier.joblib")
+    anomaly_detector = joblib.load("anomaly_detector.joblib")
+    print("Successfully loaded risk scoring and anomaly detection models.")
+except FileNotFoundError:
+    risk_classifier = None
+    anomaly_detector = None
+    print("Warning: Risk scoring or anomaly detection models not found. Skipping these steps.")
 
 # Load a pre-trained object detection model
 model = fasterrcnn_resnet50_fpn(weights=None)
@@ -272,12 +284,7 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
     if "zip" in content_type or "tar" in content_type:
         return analyze_archive_task(content, content_type, filename)
 
-    
     print("Starting analyze_file_task")
-    if "zip" in content_type or "tar" in content_type:
-        print("Analyzing archive file")
-        return analyze_archive_task(content, content_type, filename)
-
     total_risk_score = 0
     findings = {}
 
@@ -297,7 +304,6 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
     content_str = extract_text_from_file(content, content_type)
 
     print("Performing regex-based scanning")
-    # Regex-based scanning
     for category, data in SENSITIVE_PATTERNS.items():
         matches = re.findall(data["pattern"], content_str)
         if matches:
@@ -310,7 +316,6 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
             total_risk_score += len(matches) * data["weight"]
 
     print("Performing custom rule-based scanning")
-    # Custom rule-based scanning
     db = SessionLocal()
     custom_rules = rules_crud.get_rules(db)
     db.close()
@@ -323,17 +328,16 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
                 "count": len(matches),
                 "matches": matches,
                 "description": rule.description,
-                "risk_contribution": len(matches) * 10  # Default weight for custom rules
+                "risk_contribution": len(matches) * 10
             }
             total_risk_score += len(matches) * 10
 
     print("Performing entropy-based secret detection")
-    # Entropy-based secret detection
     high_entropy_strings = []
     for word in content_str.split():
-        if len(word) > 20: # Only check longer strings
+        if len(word) > 20:
             entropy = shannon_entropy(word)
-            if entropy > 4.5: # High entropy threshold
+            if entropy > 4.5:
                 high_entropy_strings.append(word)
 
     if high_entropy_strings:
@@ -341,17 +345,13 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
             "count": len(high_entropy_strings),
             "matches": high_entropy_strings,
             "description": "Potential secrets detected based on high entropy.",
-            "risk_contribution": len(high_entropy_strings) * 30 # High weight for entropy-based findings
+            "risk_contribution": len(high_entropy_strings) * 30
         }
         total_risk_score += len(high_entropy_strings) * 30
 
     print("Performing NER-based entity detection")
-    # NER-based entity detection
-    print("Calling analyze_text_with_ner...")
     ner_entities = analyze_text_with_ner(content_str)
-    print(f"analyze_text_with_ner returned {len(ner_entities)} entities.")
     if ner_entities:
-        print("NER entities found. Adding to findings.")
         findings["named_entities"] = {
             "count": len(ner_entities),
             "matches": ner_entities,
@@ -359,57 +359,85 @@ def analyze_file_task(content: bytes, content_type: str, filename: str):
             "risk_contribution": len(ner_entities) * 5
         }
         total_risk_score += len(ner_entities) * 5
-    print("Finished NER-based entity detection section.")
 
-    print("Checking for anomalies")
-    anomalies = []
-    if len(content_str) > 100000:
-        anomalies.append("File size is unusually large (over 100KB).")
-        total_risk_score += 50
+    # --- ML Model Prediction ---
+    predicted_risk_level = None
+    is_anomaly = None
 
-    if anomalies:
-        findings["anomalies"] = {
-            "count": len(anomalies),
-            "matches": anomalies,
-            "description": "Potential anomalies detected.",
-            "risk_contribution": 50
+    if risk_classifier and anomaly_detector:
+        print("Performing ML-based risk scoring and anomaly detection")
+        # Prepare features for the models
+        pii_categories = ["email_addresses", "credit_card_numbers", "social_security_numbers", "private_keys"]
+        pii_count = sum(findings.get(cat, {}).get("count", 0) for cat in pii_categories)
+        custom_rules_matches = sum(v.get("count", 0) for k, v in findings.items() if k.startswith("custom_rule_"))
+        high_entropy_strings_count = findings.get("high_entropy_secrets", {}).get("count", 0)
+
+        features = {
+            "pii_count": [pii_count],
+            "custom_rules_matches": [custom_rules_matches],
+            "high_entropy_strings_count": [high_entropy_strings_count]
         }
+        features_df = pd.DataFrame(features)
+
+        # Predict risk level
+        prediction = risk_classifier.predict(features_df)
+        predicted_risk_level = int(prediction[0])
+
+        # Predict anomaly
+        anomaly_prediction = anomaly_detector.predict(features_df)
+        is_anomaly = bool(anomaly_prediction[0] == -1)
+
+        # Optionally, adjust total_risk_score based on ML model output
+        if predicted_risk_level == 2:
+            total_risk_score += 50 # Add points for high predicted risk
+        elif predicted_risk_level == 1:
+            total_risk_score += 20 # Add points for medium predicted risk
+        if is_anomaly:
+            total_risk_score += 100 # Add significant points for anomalies
 
     if total_risk_score > 100:
         print("Quarantining file")
         quarantine_file(content, filename)
 
     print("Generating risk summary")
-    summary = generate_risk_summary(total_risk_score, findings)
+    summary = generate_risk_summary(total_risk_score, findings, predicted_risk_level, is_anomaly)
 
     analysis_data = {
         "overall_risk_score": total_risk_score,
         "detailed_findings": findings,
         "summary": summary,
         "filename": filename,
-        "content_type": content_type
+        "content_type": content_type,
+        "predicted_risk_level": predicted_risk_level,
+        "is_anomaly": is_anomaly
     }
 
     print("Saving to MongoDB")
-    # Save to MongoDB
     result_to_save = schemas.AnalysisResultCreate(
         filename=filename,
         content_type=content_type,
         risk_score=analysis_data['overall_risk_score'],
-        findings=analysis_data['detailed_findings']
+        findings=analysis_data['detailed_findings'],
+        predicted_risk_level=analysis_data['predicted_risk_level'],
+        is_anomaly=analysis_data['is_anomaly']
     )
     saved_result = crud.create_analysis_result(result=result_to_save)
 
-    # Add the MongoDB ID to the returned data for caching and frontend display
     analysis_data["_id"] = str(saved_result["_id"])
     analysis_data["id"] = str(saved_result["_id"])
 
     print("Analysis complete")
     return analysis_data
 
-def generate_risk_summary(score: int, findings: dict):
+def generate_risk_summary(score: int, findings: dict, predicted_risk_level: int = None, is_anomaly: bool = False):
     summary_lines = [f"Overall Risk Score: {score}"]
-    
+
+    if predicted_risk_level is not None:
+        risk_levels = {0: "Low", 1: "Medium", 2: "High"}
+        summary_lines.append(f"Predicted Risk Level: {risk_levels.get(predicted_risk_level, 'N/A')}")
+    if is_anomaly is not None and is_anomaly:
+        summary_lines.append("Anomaly Detected: This data point is unusual compared to normal data.")
+
     if score == 0:
         summary_lines.append("No significant risks detected.")
     elif score < 50:

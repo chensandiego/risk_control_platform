@@ -9,6 +9,7 @@ This project is a file analysis service built with Python (FastAPI) and SQLAlche
 -   **Expanded File Support:** The application can now analyze archive files (like `.zip` and `.tar`), which can often contain nested sensitive information.
 -   **Real-time Text Analysis:** Paste text directly into a textarea for immediate analysis and feedback.
 -   **Enhanced Rule-Based Scanning:** The analysis now includes more sophisticated patterns for common sensitive data (e.g., emails, credit cards, API keys, SSNs, private keys) with weighted risk scoring, as well as entropy-based detection for secrets.
+-   **ML-Powered Risk Analysis:** Leverages machine learning models to provide a more nuanced risk assessment. This includes a classification model to predict a risk level (Low, Medium, High) and an anomaly detection model to flag unusual data.
 -   **Advanced Rule Management UI:** A sophisticated web interface for managing custom analysis rules, including features for rule testing, versioning, and import/export capabilities.
 -   **Customizable Analysis Rules:** Users can define and manage their own regex-based rules for sensitive data detection through the web interface.
 -   **Analysis Dashboard:** Provides a visual overview of analysis results, including total files analyzed, risk distribution, and risk by type.
@@ -30,8 +31,8 @@ This project is a file analysis service built with Python (FastAPI) and SQLAlche
 -   **Task Queue:** Celery, Redis
 -   **Database:** MongoDB, SQLite (with SQLAlchemy for ORM)
 -   **Frontend:** HTML, Bootstrap, JavaScript
--   **ML/NLP:** PyTorch, Hugging Face Transformers
--   **Libraries:** `python-multipart`, `scikit-learn`, `python-docx`, `openpyxl`, `pytesseract`, `Pillow`, `pdfminer.six`, `SQLAlchemy`, `boto3`, `google-api-python-client`, `google-auth-httplib2`, `dropbox`, `psycopg2-binary`, `mysql-connector-python`, `PyGithub`, `python-gitlab`
+-   **ML/NLP:** PyTorch, Hugging Face Transformers, Scikit-learn
+-   **Libraries:** `python-multipart`, `scikit-learn`, `pandas`, `joblib`, `python-docx`, `openpyxl`, `pytesseract`, `Pillow`, `pdfminer.six`, `SQLAlchemy`, `boto3`, `google-api-python-client`, `google-auth-httplib2`, `dropbox`, `psycopg2-binary`, `mysql-connector-python`, `PyGithub`, `python-gitlab`
 
 ## Architecture
 
@@ -107,31 +108,26 @@ Once the server is running (either locally or via Docker Compose), you can acces
 
 ---
 
-## Advanced: Training a Custom NER Model
+## Advanced: Training Custom Models
+
+### NER Model
 
 The application includes a script to fine-tune a Transformer model (`distilbert-base-uncased`) to recognize custom types of sensitive data, including people, organizations, and locations. This is a powerful upgrade from the default rule-based scanner.
 
-### How It Works
+1.  **Prepare Your Data:** Ensure your labeled dataset is in `ner_data.jsonl` in the format of `{"tokens": [...], "ner_tags": [...]}`.
+2.  **Run the Training Script:** `python train_ner_model_v2.py`
+3.  **Integrate the Model:** After training, your model will be saved in the `./ner_model_v2/` directory, where the application will load it.
 
-The `train_ner_model_v2.py` script performs the following steps:
-1.  Loads a labeled dataset from `ner_data.jsonl`.
-2.  Loads the pre-trained `distilbert-base-uncased` model and tokenizer from Hugging Face.
-3.  Tokenizes the text and aligns the labels with the model's tokenizer.
-4.  Fine-tunes the model on your labeled data using the Hugging Face `Trainer` API.
-5.  Saves the resulting fine-tuned model and tokenizer to a local directory (`./ner_model_v2/`).
+### Risk Scoring & Anomaly Detection Models
 
-### How to Train the Model
+The platform also uses a classification model to predict a risk score and an anomaly detection model to find unusual data.
 
-1.  **Prepare Your Data:** Ensure your labeled dataset is in `ner_data.jsonl` in the format of `{"tokens": [...], "ner_tags": [...]}`. The more high-quality data you provide, the better the model will perform.
-
-2.  **Run the Training Script:** Execute the script from your terminal.
-
+1.  **Prepare Your Data:** The training data is in `risk_data.csv`. You can add more samples to this file to improve model performance. The features used are `pii_count`, `custom_rules_matches`, and `high_entropy_strings_count`.
+2.  **Run the Training Script:**
     ```bash
-    python train_ner_model_v2.py
+    python train_risk_models.py
     ```
-    This process may take some time and is computationally intensive. Using a GPU is recommended for larger datasets.
-
-3.  **Integrate the Model:** After training is complete, your fine-tuned model will be saved in the `./ner_model_v2/` directory. The `app/analysis.py` script is already configured to load the model from this directory.
+3.  **Integrate the Models:** The script saves the models as `risk_classifier.joblib` and `anomaly_detector.joblib`. The application automatically loads these files if they exist in the root directory.
 
 ## Project Structure
 
@@ -149,7 +145,8 @@ risk_control_platform/
 │   └── static/
 │       └── index.html    # Main HTML file for the UI
 ├── celery_app.py         # Celery application setup
-├── train_ner_model.py    # Script for training the NER model
+├── train_ner_model_v2.py # Script for training the NER model
+├── train_risk_models.py  # Script for training classification/anomaly models
 ├── requirements.txt      # Project dependencies
 ├── docker-compose.yml    # Docker Compose configuration
 ├── Dockerfile            # Dockerfile for the application
@@ -160,25 +157,9 @@ risk_control_platform/
 
 -   `POST /uploadfile/`: Upload a file for analysis.
 -   `POST /analyze-text/`: Submit text for analysis.
--   `POST /scan-s3-file/`: Scan a file from an S3 bucket.
--   `POST /scan-google-drive-file/`: Scan a file from Google Drive.
--   `POST /scan-dropbox-file/`: Scan a file from Dropbox.
--   `POST /scan-postgresql-table/`: Scan a table from a PostgreSQL database.
--   `POST /scan-mysql-table/`: Scan a table from a MySQL database.
--   `POST /scan-github-file/`: Scan a file from a GitHub repository.
--   `POST /scan-gitlab-file/`: Scan a file from a GitLab repository.
--   `POST /scan-dockerfile/`: Scan a Dockerfile for vulnerabilities and hardcoded API keys.
--   `GET /results/{task_id}`: Retrieve the analysis results for a given task ID.
+-   `GET /results/{task_id}`: Retrieve the analysis results. The result object will contain the `overall_risk_score` as well as the ML-driven fields `predicted_risk_level` (0=Low, 1=Medium, 2=High) and `is_anomaly` (true/false).
 -   `POST /remediate/{task_id}`: Perform remediation actions (redact or quarantine) on a file.
--   `GET /rules/`: Get a list of custom rules.
--   `POST /rules/`: Create a new custom rule.
--   `GET /rules/{rule_id}`: Get a specific custom rule.
--   `PUT /rules/{rule_id}`: Update a custom rule.
--   `DELETE /rules/{rule_id}`: Delete a custom rule.
--   `POST /rules/test/`: Test a regex pattern against a sample text.
--   `POST /rules/import/`: Import a list of rules.
--   `GET /rules/export/`: Export all custom rules.
--   `GET /dashboard/`: Get data for the analysis dashboard.
+-   ... (and other existing endpoints)
 
 ## Known Issues and Future Improvements
 

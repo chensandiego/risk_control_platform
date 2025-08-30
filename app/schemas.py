@@ -8,6 +8,8 @@ class AnalysisResultBase(BaseModel):
     content_type: Optional[str] = None
     risk_score: int
     findings: Optional[Dict[str, Any]] = None
+    predicted_risk_level: Optional[int] = None
+    is_anomaly: Optional[bool] = False
 
 class AnalysisResultCreate(AnalysisResultBase):
     pass

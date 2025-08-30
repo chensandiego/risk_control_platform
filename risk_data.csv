@@ -1,0 +1,11 @@
+text,pii_count,custom_rules_matches,high_entropy_strings_count,risk_level
+"This is a normal email.",0,0,0,0
+"Please see the attached document.",0,0,0,0
+"My email is test@example.com",1,0,0,1
+"The API key is aS1k2j3h4g5f6d7s8a9p0o1i2u3y4t5r6e7w8q9z0x",0,0,1,2
+"Urgent: SSN 123-45-6789 and credit card 1234-5678-9012-3456 found",2,1,0,2
+"This is a very long string with no sensitive information just to check the length anomaly",0,0,0,0
+"Another key: secret_key_for_testing_purposes_1234567890",0,1,1,2
+"This text contains a phone number 555-123-4567",1,0,0,1
+"This is a clean text with no issues.",0,0,0,0
+"Find the private key -----BEGIN RSA PRIVATE KEY-----...",1,1,1,2
